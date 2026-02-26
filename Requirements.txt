@@ -1,0 +1,91 @@
+BOOKIFY PROJECT - TECHNOLOGY & INSTALLATION REQUIREMENTS
+
+Project Name: Bookify - Online Book Club Platform
+
+Description: Bookify is a full-stack web application that allows users
+to create and join book clubs, chat within clubs, share books, and
+manage club interactions.
+
+========================================================= TECHNOLOGIES
+USED =========================================================
+
+FRONTEND: - React.js (UI framework) - Tailwind CSS (Styling) - Axios
+(API communication) - React Router DOM (Navigation)
+
+BACKEND: - Node.js (Runtime environment) - Express.js (Backend
+framework)
+
+DATABASE: - MongoDB Atlas (Cloud database) - Mongoose (MongoDB object
+modeling)
+
+AUTHENTICATION: - JSON Web Token (JWT)
+
+VERSION CONTROL: - Git - GitHub
+
+========================================================= TOOLS
+INSTALLED ON SYSTEM
+=========================================================
+
+Required Software:
+
+1.  Node.js Version used: v20.x Includes npm (Node Package Manager)
+
+2.  npm Version used: v10.x
+
+3.  Git Version used: 2.53.0.windows.1
+
+4.  MongoDB Atlas Account Used for cloud database
+
+5.  VS Code Used for development
+
+6.  Web Browser Chrome / Edge for testing
+
+========================================================= PROJECT
+STRUCTURE =========================================================
+
+bookclub/ │ ├── client/ (React frontend) ├── server/ (Node.js backend)
+├── .gitignore ├── README.md
+
+========================================================= LIBRARIES
+INSTALLED (FRONTEND)
+=========================================================
+
+-   react
+-   react-dom
+-   react-router-dom
+-   axios
+-   tailwindcss
+-   postcss
+-   autoprefixer
+
+========================================================= LIBRARIES
+INSTALLED (BACKEND)
+=========================================================
+
+-   express
+-   mongoose
+-   cors
+-   dotenv
+-   jsonwebtoken
+-   nodemon
+
+========================================================= OPTIONAL
+FUTURE TECH =========================================================
+
+-   Socket.io (Real-time chat)
+-   Cloudinary / AWS S3 (File storage)
+-   PDF Viewer (Book reading)
+-   Deployment (Render / Vercel)
+
+=========================================================
+
+PROJECT STATUS: Fully functional MERN stack web application with:
+
+-   Authentication
+-   Club system
+-   Invite links
+-   Club chat
+-   Book system
+-   GitHub backup
+
+=========================================================
