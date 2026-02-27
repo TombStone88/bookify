@@ -10,11 +10,13 @@ const bookRoutes = require("./routes/book");
 const messageRoutes = require("./routes/message");
 
 const app = express();
+const path = require("path");
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
 
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/messages", messageRoutes);
 
 //club routes

@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Clubs from "./pages/Clubs";
 import JoinClub from "./pages/JoinClub";
 import ClubDashboard from "./pages/ClubDashboard";
+import PDFViewer from "./pages/PDFViewer";
 
 function App() {
 
@@ -24,6 +25,8 @@ function App() {
         <Route path="/join/:inviteCode" element={<JoinClub />} />
 
         <Route path="/club/:clubId" element={<ClubDashboard />} />
+
+        <Route path="/viewer" element={<PDFViewer />} />
 
       </Routes>
 

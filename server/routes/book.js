@@ -1,215 +1,127 @@
 const express = require("express");
+const router = express.Router();
+
 const Book = require("../models/Book");
 const authMiddleware = require("../middleware/authMiddleware");
 
-const router = express.Router();
+const multer = require("multer");
+const pdf = require("pdf-poppler");
+const path = require("path");
 
+// Storage config
+const storage = multer.diskStorage({
 
-// ➕ Add Book
-router.post("/add", authMiddleware, async (req, res) => {
-  try {
-    const { title, author, description } = req.body;
+  destination: function (req, file, cb) {
 
-    const newBook = new Book({
-      title,
-      author,
-      description,
-      postedBy: req.user.userId
-    });
+    cb(null, "uploads/");
 
-    await newBook.save();
+  },
 
-    res.status(201).json({
-      message: "Book added successfully 📚",
-      book: newBook
-    });
+  filename: function (req, file, cb) {
 
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    cb(null, Date.now() + "-" + file.originalname);
+
   }
+
+});
+
+const upload = multer({ storage });
+
+
+const fs = require("fs-extra");
+
+router.post("/upload/:clubId",
+  authMiddleware,
+  upload.single("file"),
+  async (req, res) => {
+
+    try {
+
+      if (!req.file) {
+        return res.status(400).json({
+          error: "No file uploaded"
+        });
+      }
+
+      const filename = req.file.filename;
+
+      const pdfPath = req.file.path;
+
+      console.log("PDF uploaded:", filename);
+
+      const options = {
+        format: "png",
+        out_dir: "uploads",
+        out_prefix: filename.replace(".pdf", ""),
+        page: 1
+      };
+
+      await pdf.convert(pdfPath, options);
+
+      console.log("PDF converted");
+
+      // AUTO-DETECT generated cover file
+      const files = await fs.readdir("uploads");
+
+      const coverFile = files.find(file =>
+        file.startsWith(filename.replace(".pdf", "")) &&
+        file.endsWith(".png")
+      );
+
+      if (!coverFile) {
+        return res.status(500).json({
+          error: "Cover image not found"
+        });
+      }
+
+      console.log("Detected cover:", coverFile);
+
+      const book = new Book({
+
+        title: req.body.title,
+        author: req.body.author,
+        description: req.body.description,
+
+        fileUrl:
+          `http://localhost:5000/uploads/${filename}`,
+
+        coverImage:
+          `http://localhost:5000/uploads/${coverFile}`,
+
+        clubId: req.params.clubId,
+
+        uploadedBy: req.user.userId
+
+      });
+
+      const saved = await book.save();
+
+      console.log("Saved to DB:", saved.coverImage);
+
+      res.json(saved);
+
+    } catch (error) {
+
+      console.error("ERROR:", error);
+
+      res.status(500).json({
+        error: error.message
+      });
+
+    }
+
 });
 
 
-// 📖 Get All Books
-router.get("/all", async (req, res) => {
-  try {
+// Get club books
+router.get("/:clubId", authMiddleware, async (req, res) => {
 
-    const books = await Book.find()
-      .populate("postedBy", "name email")
-      .populate("comments.user", "name");
+  const books = await Book.find({
+    clubId: req.params.clubId
+  });
 
-    res.status(200).json(books);
+  res.json(books);
 
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-// ❌ Delete Book
-router.delete("/delete/:id", authMiddleware, async (req, res) => {
-  try {
-    const book = await Book.findById(req.params.id);
-
-    if (!book) {
-      return res.status(404).json({
-        message: "Book not found"
-      });
-    }
-
-    if (book.postedBy.toString() !== req.user.userId) {
-      return res.status(403).json({
-        message: "Not authorized"
-      });
-    }
-
-    await Book.findByIdAndDelete(req.params.id);
-
-    res.status(200).json({
-      message: "Book deleted successfully 🗑"
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-
-// ✏️ Update Book
-router.put("/update/:id", authMiddleware, async (req, res) => {
-  try {
-    const { title, author, description } = req.body;
-
-    const book = await Book.findById(req.params.id);
-
-    if (!book) {
-      return res.status(404).json({
-        message: "Book not found"
-      });
-    }
-
-    if (book.postedBy.toString() !== req.user.userId) {
-      return res.status(403).json({
-        message: "Not authorized"
-      });
-    }
-
-    book.title = title || book.title;
-    book.author = author || book.author;
-    book.description = description || book.description;
-
-    await book.save();
-
-    res.status(200).json({
-      message: "Book updated successfully ✏️",
-      book
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.put("/like/:id", authMiddleware, async (req, res) => {
-  try {
-
-    const book = await Book.findById(req.params.id);
-
-    if (!book) {
-      return res.status(404).json({
-        message: "Book not found"
-      });
-    }
-
-    // Check if already liked
-    if (book.likes.includes(req.user.userId)) {
-      return res.status(400).json({
-        message: "You already liked this book"
-      });
-    }
-
-    book.likes.push(req.user.userId);
-
-    await book.save();
-
-    res.status(200).json({
-      message: "Book liked ❤️",
-      totalLikes: book.likes.length
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.put("/comment/:id", authMiddleware, async (req, res) => {
-  try {
-
-    const { text } = req.body;
-
-    const book = await Book.findById(req.params.id);
-
-    if (!book) {
-      return res.status(404).json({
-        message: "Book not found"
-      });
-    }
-
-    const newComment = {
-      text,
-      user: req.user.userId
-    };
-
-    book.comments.push(newComment);
-
-    await book.save();
-
-    res.status(200).json({
-      message: "Comment added 💬",
-      comments: book.comments
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-router.delete("/comment/:bookId/:commentId", authMiddleware, async (req, res) => {
-  try {
-
-    const book = await Book.findById(req.params.bookId);
-
-    if (!book) {
-      return res.status(404).json({
-        message: "Book not found"
-      });
-    }
-
-    const comment = book.comments.id(req.params.commentId);
-
-    if (!comment) {
-      return res.status(404).json({
-        message: "Comment not found"
-      });
-    }
-
-    if (comment.user.toString() !== req.user.userId) {
-      return res.status(403).json({
-        message: "Not authorized"
-      });
-    }
-
-    comment.deleteOne();
-
-    await book.save();
-
-    res.status(200).json({
-      message: "Comment deleted successfully 🗑"
-    });
-
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
 });
 
 module.exports = router;

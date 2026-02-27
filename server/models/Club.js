@@ -2,34 +2,22 @@ const mongoose = require("mongoose");
 
 const clubSchema = new mongoose.Schema({
 
-  name: {
-    type: String,
-    required: true
-  },
+  name: String,
 
-  description: {
-    type: String,
-    required: true
-  },
+  description: String,
 
-  creator: {
+  inviteCode: String,
+
+  admin: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true
   },
 
-  members: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User"
-    }
-  ],
-
-  inviteCode: {
-    type: String,
-    required: true,
-    unique: true
-  }
+  members: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  }]
 
 }, { timestamps: true });
 
