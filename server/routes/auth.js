@@ -18,15 +18,14 @@ router.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
-      name,
+      username: name,
       email,
-      password: hashedPassword
+      password: hashedPassword,
     });
 
     await newUser.save();
 
     res.status(201).json({ message: "User registered successfully" });
-
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: error.message });
@@ -53,17 +52,14 @@ router.post("/login", async (req, res) => {
     }
 
     // Generate JWT token
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
     res.status(200).json({
       message: "Login successful",
-      token
+      token,
     });
-
   } catch (error) {
     console.log(error);
     res.status(500).json({ error: error.message });

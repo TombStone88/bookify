@@ -1,7 +1,18 @@
 const express = require("express");
+const { MongoClient, ServerApiVersion } = require('mongodb');
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
+const userRoutes = require("./routes/userRoutes");
+
+const dns = require('dns');
+
+dns.setServers([
+  "8.8.8.8",
+  "8.8.4.4"
+]);
+
+dns.setDefaultResultOrder('ipv4first');
 
 const clubRoutes = require("./routes/club");
 const authRoutes = require("./routes/auth");
@@ -18,6 +29,8 @@ app.use(express.json());
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/api/messages", messageRoutes);
+
+app.use("/api/users", userRoutes);
 
 //club routes
 app.use("/api/clubs", clubRoutes);
@@ -42,10 +55,9 @@ app.get("/", (req, res) => {
 });
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI, { family: 4 })
-  .then(() => console.log("MongoDB Connected ✅"))
-  .catch((err) => console.log("Mongo Error:", err));
-
+mongoose.connect(process.env.MONGO_URI)
+.then(() => console.log("MongoDB Connected ✅"))
+.catch(err => console.log("Mongo Error:", err));
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {

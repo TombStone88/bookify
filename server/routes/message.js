@@ -41,7 +41,8 @@ router.get("/:clubId", authMiddleware, async (req, res) => {
 
     const messages = await Message.find({
       clubId: req.params.clubId
-    }).populate("sender", "name");
+    })
+    .populate("sender", "name username"); // added username
 
     res.json(messages);
 

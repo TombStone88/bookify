@@ -373,7 +373,7 @@ function ClubDashboard() {
 
               <div key={msg._id}>
 
-                <b>{msg.sender?.name}:</b>
+                <b>{msg.sender?.name || msg.sender?.username || "User"}:</b>
                 <span className="ml-2">
                   {msg.text}
                 </span>

@@ -1,7 +1,6 @@
 const mongoose = require("mongoose");
 
 const bookSchema = new mongoose.Schema({
-
   title: String,
 
   author: String,
@@ -10,23 +9,53 @@ const bookSchema = new mongoose.Schema({
 
   fileUrl: String,
 
-  coverImage: String,   // THIS MUST EXIST
+  coverImage: String,
 
   clubId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Club"
+    ref: "Club",
+  },
+
+  currentPage: {
+    type: Number,
+    default: 1,
+  },
+
+  totalPages: {
+    type: Number,
+    default: 1,
   },
 
   uploadedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
+    ref: "User",
   },
+
+  likes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
+
+  comments: [
+    {
+      user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+      text: String,
+      createdAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
 
   createdAt: {
     type: Date,
-    default: Date.now
-  }
-
+    default: Date.now,
+  },
 });
 
 module.exports = mongoose.model("Book", bookSchema);

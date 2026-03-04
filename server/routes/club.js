@@ -193,5 +193,28 @@ router.get("/members/:clubId", authMiddleware, async (req, res) => {
   }
 
 });
+router.delete("/leave/:clubId", authMiddleware, async (req, res) => {
+  try {
+
+    const club = await Club.findById(req.params.clubId);
+
+    if (!club) {
+      return res.status(404).json({ message: "Club not found" });
+    }
+
+    club.members = club.members.filter(
+      member => member.toString() !== req.user.userId
+    );
+
+    await club.save();
+
+    res.json({ message: "Left club successfully" });
+
+  } catch (error) {
+
+    res.status(500).json({ message: error.message });
+
+  }
+});
 
 module.exports = router;
