@@ -11,18 +11,20 @@ router.post("/send/:clubId", authMiddleware, async (req, res) => {
   try {
 
     const message = new Message({
-
       clubId: req.params.clubId,
       sender: req.user.userId,
       text: req.body.text
-
     });
 
     await message.save();
 
+    // populate sender before returning
+    const populatedMessage = await Message.findById(message._id)
+      .populate("sender", "name username");
+
     res.json({
       message: "Message sent",
-      data: message
+      data: populatedMessage
     });
 
   } catch (error) {
@@ -42,7 +44,7 @@ router.get("/:clubId", authMiddleware, async (req, res) => {
     const messages = await Message.find({
       clubId: req.params.clubId
     })
-    .populate("sender", "name username"); // added username
+    .populate("sender", "name username");
 
     res.json(messages);
 

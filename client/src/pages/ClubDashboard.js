@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/Navbar";
+import socket from "../socket";
 
 function ClubDashboard() {
 
   const { clubId } = useParams();
-
+  //const socket = io("http://localhost:5000");
   const token = localStorage.getItem("token");
 
   const userId =
@@ -31,17 +32,25 @@ function ClubDashboard() {
 
   useEffect(() => {
 
-    fetchMessages();
-    fetchBooks();
-    fetchMembers();
+  fetchMessages();
+  fetchBooks();
+  fetchMembers();
 
-  }, [clubId]);
+  socket.emit("joinClub", clubId);
+
+  socket.on("receiveMessage", (message) => {
+    setMessages((prev) => [...prev, message]);
+  });
+
+  return () => {
+    socket.off("receiveMessage");
+  };
+
+}, [clubId]);
 
   // FETCH MEMBERS
   const fetchMembers = async () => {
-
     try {
-
       const res = await axios.get(
         `http://localhost:5000/api/clubs/members/${clubId}`,
         {
@@ -55,18 +64,13 @@ function ClubDashboard() {
       setAdminId(res.data.admin);
 
     } catch (error) {
-
       console.error(error);
-
     }
-
   };
 
   // REMOVE MEMBER
   const removeMember = async (memberId) => {
-
     try {
-
       await axios.delete(
         `http://localhost:5000/api/clubs/remove-member/${clubId}/${memberId}`,
         {
@@ -79,11 +83,8 @@ function ClubDashboard() {
       fetchMembers();
 
     } catch (error) {
-
       console.error(error);
-
     }
-
   };
 
   // DELETE CLUB
@@ -111,9 +112,7 @@ function ClubDashboard() {
       window.location.href = "/clubs";
 
     } catch (error) {
-
       console.error(error);
-
     }
 
   };
@@ -151,27 +150,30 @@ function ClubDashboard() {
   };
 
   // SEND MESSAGE
-  const sendMessage = async () => {
+const sendMessage = async () => {
 
-    if (!text.trim()) return;
+  if (!text.trim()) return;
 
-    await axios.post(
-      `http://localhost:5000/api/messages/send/${clubId}`,
-      { text },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+  const res = await axios.post(
+    `http://localhost:5000/api/messages/send/${clubId}`,
+    { text },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
       }
-    );
+    }
+  );
 
-    setText("");
+  socket.emit("sendMessage", {
+    clubId,
+    text,
+    sender: res.data.sender
+  });
 
-    fetchMessages();
+  setText("");
 
-  };
+};
 
-  // FORM CHANGE
   const handleChange = (e) => {
 
     setForm({
@@ -213,21 +215,20 @@ function ClubDashboard() {
     );
 
     setShowModal(false);
-
     fetchBooks();
 
   };
 
   return (
 
-    <div className="h-screen flex flex-col">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
 
       <Navbar />
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 max-w-7xl mx-auto w-full">
 
-        {/* LEFT SIDEBAR */}
-        <div className="w-72 bg-white border-r p-3 overflow-y-auto">
+        {/* LEFT PANEL - BOOKS */}
+        <div className="w-64 bg-white border-r p-3 overflow-y-auto">
 
           <div className="flex justify-between items-center mb-3">
 
@@ -244,19 +245,15 @@ function ClubDashboard() {
 
           </div>
 
-          {/* DELETE CLUB BUTTON */}
           {adminId === userId && (
-
             <button
               onClick={deleteClub}
               className="bg-red-500 text-white px-2 py-1 rounded text-xs mb-3"
             >
               Delete Club
             </button>
-
           )}
 
-          {/* BOOK LIST */}
           {books.map(book => (
 
             <div
@@ -286,7 +283,6 @@ function ClubDashboard() {
 
               </div>
 
-              {/* VIEW & DOWNLOAD */}
               <div className="flex gap-2 mt-1">
 
                 <a
@@ -312,68 +308,24 @@ function ClubDashboard() {
 
           ))}
 
-          {/* MEMBERS */}
-          <div className="mt-4">
-
-            <h3 className="font-bold mb-2">
-              Members
-            </h3>
-
-            {members.map(member => (
-
-              <div
-                key={member._id}
-                className="flex justify-between items-center text-sm mb-1"
-              >
-
-                <span>
-
-                  {member._id.toString() === adminId ? (
-
-                    <span className="text-yellow-600 font-semibold">
-                      👑 {member.name}
-                    </span>
-
-                  ) : (
-
-                    <span>
-                      👤 {member.name}
-                    </span>
-
-                  )}
-
-                </span>
-
-                {adminId === userId &&
-                 member._id.toString() !== adminId && (
-
-                  <button
-                    onClick={() => removeMember(member._id)}
-                    className="text-red-500 text-xs"
-                  >
-                    Remove
-                  </button>
-
-                )}
-
-              </div>
-
-            ))}
-
-          </div>
-
         </div>
 
-        {/* CHAT AREA */}
+        {/* CENTER PANEL - CHAT */}
         <div className="flex flex-col flex-1">
 
           <div className="flex-1 p-4 overflow-y-auto bg-gray-100">
 
             {messages.map(msg => (
 
-              <div key={msg._id}>
+              <div
+                key={msg._id}
+                className="mb-2 bg-white p-2 rounded shadow-sm"
+              >
 
-                <b>{msg.sender?.name || msg.sender?.username || "User"}:</b>
+                <span className="font-semibold text-blue-600">
+                  {msg.sender?.name || msg.sender?.username || "User"}
+                </span>
+
                 <span className="ml-2">
                   {msg.text}
                 </span>
@@ -390,6 +342,7 @@ function ClubDashboard() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               className="flex-1 border p-2 rounded"
+              placeholder="Type a message..."
             />
 
             <button
@@ -403,9 +356,59 @@ function ClubDashboard() {
 
         </div>
 
+        {/* RIGHT PANEL - MEMBERS */}
+        <div className="w-56 bg-white border-l p-3 overflow-y-auto">
+
+          <h3 className="font-bold mb-2">
+            Members
+          </h3>
+
+          {members.map(member => (
+
+            <div
+              key={member._id}
+              className="flex justify-between items-center text-sm mb-2"
+            >
+
+              <span>
+
+                {member._id.toString() === adminId ? (
+
+                  <span className="text-yellow-600 font-semibold">
+                    👑 {member.name || member.username}
+                  </span>
+
+                ) : (
+
+                  <span>
+                    👤 {member.name || member.username}
+                  </span>
+
+                )}
+
+              </span>
+
+              {adminId === userId &&
+               member._id.toString() !== adminId && (
+
+                <button
+                  onClick={() => removeMember(member._id)}
+                  className="text-red-500 text-xs"
+                >
+                  Remove
+                </button>
+
+              )}
+
+            </div>
+
+          ))}
+
+        </div>
+
       </div>
 
-      {/* UPLOAD MODAL */}
+      {/* UPLOAD BOOK MODAL */}
       {showModal && (
 
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">

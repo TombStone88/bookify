@@ -166,7 +166,7 @@ router.get("/members/:clubId", authMiddleware, async (req, res) => {
   try {
 
     const club = await Club.findById(req.params.clubId)
-      .populate("members", "name email");
+      .populate("members", "name username email");
 
     if (!club) {
       return res.status(404).json({

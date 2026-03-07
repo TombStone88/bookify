@@ -87,7 +87,8 @@ function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="bg-gray-950/80 backdrop-blur border-b border-gray-800 sticky top-0 z-50">
+      {" "}
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
         <h1
           onClick={() => navigate("/dashboard")}
@@ -99,14 +100,14 @@ function Navbar() {
         <div className="flex items-center gap-6">
           <button
             onClick={() => navigate("/dashboard")}
-            className="text-gray-700 hover:text-blue-600 font-medium"
+            className="text-gray-300 hover:text-blue-400 font-medium"
           >
             Dashboard{" "}
           </button>
 
           <button
             onClick={() => navigate("/clubs")}
-            className="text-gray-700 hover:text-blue-600 font-medium"
+            className="text-gray-300 hover:text-blue-600 font-medium"
           >
             Clubs{" "}
           </button>
@@ -119,7 +120,7 @@ function Navbar() {
               {user?.profileImage ? (
                 <img
                   src={user.profileImage}
-                  className="w-10 h-10 rounded-full object-cover avatar-hover"
+                  className="w-10 h-10 rounded-full object-cover border-2 border-blue-500 hover:scale-110 transition"
                 />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
@@ -131,24 +132,27 @@ function Navbar() {
             </div>
 
             {open && (
-              <div className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-xl p-5 animate-fadeIn">
+              <div className="absolute right-0 mt-3 w-64 bg-gray-900 text-white rounded-xl shadow-2xl border border-gray-800 p-5 animate-fadeIn">
                 <div className="flex flex-col items-center">
                   <img
-                    src={user?.profileImage}
-                    className="w-20 h-20 rounded-full object-cover mb-3"
+                    src={
+                      user?.profileImage ||
+                      `https://ui-avatars.com/api/?name=${user?.username}&background=0D8ABC&color=fff`
+                    }
+                    className="w-20 h-20 rounded-full object-cover border-4 border-blue-500 mb-3"
                   />
 
                   <p className="font-semibold text-lg">{user?.username}</p>
 
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-400">
                     Member since{" "}
                     {new Date(user?.createdAt).toLocaleDateString()}
                   </p>
                 </div>
 
-                <div className="border-t my-3"></div>
+                <div className="border-t border-gray-700 my-3"></div>
 
-                <div className="text-sm space-y-1">
+                <div className="text-sm space-y-1 text-gray-300">
                   <p>📚 Books uploaded: {user?.booksUploaded || 0}</p>
                   <p>👥 Clubs joined: {user?.clubsJoined || 0}</p>
                 </div>
@@ -156,16 +160,16 @@ function Navbar() {
                 <div className="mt-4 flex flex-col gap-2">
                   <button
                     onClick={() => setShowEdit(true)}
-                    className="py-2 rounded-lg bg-gray-100 hover:bg-gray-200"
+                    className="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition"
                   >
-                    Edit Profile{" "}
+                    ✏ Edit Profile
                   </button>
 
                   <button
                     onClick={handleLogout}
-                    className="py-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200"
+                    className="py-2 rounded-lg bg-red-600 hover:bg-red-700 transition"
                   >
-                    Logout{" "}
+                    Logout
                   </button>
                 </div>
               </div>
@@ -173,7 +177,6 @@ function Navbar() {
           </div>
         </div>
       </div>
-
       {showEdit && (
         <div className="fixed inset-0 flex items-center justify-center bg-black/30 animate-fadeIn">
           <div className="bg-white w-96 rounded-xl shadow-lg p-6 relative animate-scaleIn">

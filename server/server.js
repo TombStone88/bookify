@@ -1,44 +1,64 @@
 const express = require("express");
-const { MongoClient, ServerApiVersion } = require('mongodb');
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
+
+const http = require("http");
+const { Server } = require("socket.io");
+
 const userRoutes = require("./routes/userRoutes");
-
-const dns = require('dns');
-
-dns.setServers([
-  "8.8.8.8",
-  "8.8.4.4"
-]);
-
-dns.setDefaultResultOrder('ipv4first');
-
 const clubRoutes = require("./routes/club");
 const authRoutes = require("./routes/auth");
 const authMiddleware = require("./middleware/authMiddleware");
 const bookRoutes = require("./routes/book");
 const messageRoutes = require("./routes/message");
 
-const app = express();
+const dns = require("dns");
 const path = require("path");
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+dns.setDefaultResultOrder("ipv4first");
+
+const app = express();
+const server = http.createServer(app);
+
+// SOCKET.IO
+const io = new Server(server, {
+  cors: {
+    origin: "*"
+  }
+});
+
+// SOCKET EVENTS
+io.on("connection", (socket) => {
+
+  console.log("User connected:", socket.id);
+
+  socket.on("joinClub", (clubId) => {
+    socket.join(clubId);
+    console.log("User joined club:", clubId);
+  });
+
+  socket.on("sendMessage", (data) => {
+    io.to(data.clubId).emit("receiveMessage", data);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected");
+  });
+
+});
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 app.use("/api/messages", messageRoutes);
-
 app.use("/api/users", userRoutes);
-
-//club routes
 app.use("/api/clubs", clubRoutes);
-
-// Routes
 app.use("/api/auth", authRoutes);
-
-//Book routes
 app.use("/api/books", bookRoutes);
 
 // Protected Route
@@ -58,8 +78,10 @@ app.get("/", (req, res) => {
 mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("MongoDB Connected ✅"))
 .catch(err => console.log("Mongo Error:", err));
+
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+// IMPORTANT: server.listen instead of app.listen
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

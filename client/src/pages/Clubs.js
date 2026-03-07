@@ -97,111 +97,124 @@ function Clubs() {
       toast.error("Invalid invite code");
     }
   };
+
   const leaveClub = async (clubId) => {
+    try {
+      const token = localStorage.getItem("token");
 
-  try {
-
-    const token = localStorage.getItem("token");
-
-    await axios.delete(
-      `http://localhost:5000/api/clubs/leave/${clubId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
+      await axios.delete(
+        `http://localhost:5000/api/clubs/leave/${clubId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
-      }
-    );
+      );
 
-    toast.success("Left club");
+      toast.success("Left club");
 
-    fetchClubs();
+      fetchClubs();
 
-  } catch (error) {
+    } catch (error) {
+      toast.error("Could not leave club");
+    }
+  };
 
-    toast.error("Could not leave club");
-
-  }
-
-};
   return (
     <div className="min-h-screen bg-gray-100">
       <Navbar />
 
       <div className="max-w-7xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div className="bg-white p-5 rounded-xl shadow mb-6">
-            <h3 className="font-bold mb-2">Join Club</h3>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Enter invite code"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                className="border p-2 rounded w-full"
-              />
+        {/* Top Section */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
 
-              <button
-                onClick={joinClub}
-                className="bg-green-600 text-white px-4 py-2 rounded"
-              >
-                Join
-              </button>
-            </div>
+          {/* Join Club */}
+          <div className="bg-white p-4 rounded-xl shadow flex items-center gap-3 w-full md:w-auto">
+            <input
+              type="text"
+              placeholder="Enter invite code"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              className="border p-2 rounded w-full md:w-60"
+            />
+
+            <button
+              onClick={joinClub}
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+            >
+              Join
+            </button>
           </div>
 
-          <h1 className="text-2xl font-bold">Your Clubs</h1>
-
+          {/* Create Club */}
           <button
             onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg"
           >
-            ➕ Create Club
+            + Create Club
           </button>
+
         </div>
 
+        <h1 className="text-2xl font-bold mb-6">Your Clubs</h1>
+
+        {/* Clubs Grid */}
         <div className="grid md:grid-cols-3 gap-6">
           {clubs.map((club) => (
-            <div key={club._id} className="bg-white p-5 rounded-xl shadow">
+            <div
+              key={club._id}
+              className="bg-white p-6 rounded-xl shadow hover:shadow-lg transition"
+            >
               <h2 className="font-bold text-lg">{club.name}</h2>
 
-              <p className="text-gray-600 text-sm">{club.description}</p>
+              <p className="text-gray-600 text-sm mt-1">
+                {club.description}
+              </p>
 
-              <p className="text-sm mt-2">
+              <p className="text-sm mt-3">
                 Invite Code:
                 <span className="font-bold ml-1">{club.inviteCode}</span>
               </p>
 
               <button
                 onClick={() => openClub(club._id)}
-                className="mt-3 bg-green-600 text-white px-4 py-2 rounded w-full"
+                className="mt-4 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full"
               >
                 Open Club
               </button>
 
               <button
                 onClick={() => copyInviteLink(club.inviteCode)}
-                className="mt-2 bg-blue-600 text-white px-4 py-2 rounded w-full"
+                className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full"
               >
                 Copy Invite Link
               </button>
+
               <button
                 onClick={() => leaveClub(club._id)}
-                className="mt-2 bg-red-600 text-white px-4 py-2 rounded w-full"
+                className="mt-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded w-full"
               >
                 Leave Club
               </button>
             </div>
           ))}
         </div>
+
       </div>
 
+      {/* Create Club Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+
           <div className="bg-white p-6 rounded-xl shadow-lg w-96">
-            <h2 className="font-bold mb-4">Create Club</h2>
+
+            <h2 className="font-bold mb-4 text-lg">
+              Create Club
+            </h2>
 
             <form onSubmit={handleSubmit}>
+
               <input
                 name="name"
                 placeholder="Club name"
@@ -219,6 +232,7 @@ function Clubs() {
               />
 
               <div className="flex justify-end gap-2">
+
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
@@ -227,14 +241,19 @@ function Clubs() {
                   Cancel
                 </button>
 
-                <button className="bg-blue-600 text-white px-4 py-2 rounded">
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
                   Create
                 </button>
+
               </div>
+
             </form>
+
           </div>
+
         </div>
       )}
+
     </div>
   );
 }

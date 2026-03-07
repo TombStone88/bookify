@@ -5,7 +5,6 @@ const Book = require("../models/Book");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const multer = require("multer");
-const pdf = require("pdf-poppler");
 const path = require("path");
 
 // Storage config
@@ -41,42 +40,12 @@ router.post(
 
       console.log("PDF uploaded:", filename);
 
-      const options = {
-        format: "png",
-        out_dir: "uploads",
-        out_prefix: filename.replace(".pdf", ""),
-        page: 1,
-      };
-
-      await pdf.convert(pdfPath, options);
-
-      console.log("PDF converted");
-
-      // AUTO-DETECT generated cover file
-      const files = await fs.readdir("uploads");
-
-      const coverFile = files.find(
-        (file) =>
-          file.startsWith(filename.replace(".pdf", "")) &&
-          file.endsWith(".png"),
-      );
-
-      if (!coverFile) {
-        return res.status(500).json({
-          error: "Cover image not found",
-        });
-      }
-
-      console.log("Detected cover:", coverFile);
-
       const book = new Book({
         title: req.body.title,
         author: req.body.author,
         description: req.body.description,
 
         fileUrl: `http://localhost:5000/uploads/${filename}`,
-
-        coverImage: `http://localhost:5000/uploads/${coverFile}`,
 
         clubId: req.params.clubId,
 
@@ -98,42 +67,32 @@ router.post(
   },
 );
 
-
 // Get books uploaded by logged-in user
 router.get("/user/books", authMiddleware, async (req, res) => {
-
   try {
-
     const books = await Book.find({
-      uploadedBy: req.user.userId
+      uploadedBy: req.user.userId,
     });
 
     res.json(books);
-
   } catch (error) {
-
     res.status(500).json({
-      message: error.message
+      message: error.message,
     });
-
   }
-
 });
 
 // Get club books
 router.get("/:clubId", authMiddleware, async (req, res) => {
-
   const books = await Book.find({
-    clubId: req.params.clubId
+    clubId: req.params.clubId,
   });
 
   res.json(books);
-
 });
 // delete book
 router.delete("/delete/:id", authMiddleware, async (req, res) => {
   try {
-
     const book = await Book.findById(req.params.id);
 
     if (!book) {
@@ -147,16 +106,13 @@ router.delete("/delete/:id", authMiddleware, async (req, res) => {
     await Book.findByIdAndDelete(req.params.id);
 
     res.json({ message: "Book deleted" });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
 router.put("/progress/:bookId", authMiddleware, async (req, res) => {
-
   try {
-
     const { page } = req.body;
 
     const book = await Book.findById(req.params.bookId);
@@ -166,16 +122,9 @@ router.put("/progress/:bookId", authMiddleware, async (req, res) => {
     await book.save();
 
     res.json({ message: "Progress updated" });
-
   } catch (error) {
-
     res.status(500).json({ error: error.message });
-
   }
-
 });
-
-
-
 
 module.exports = router;

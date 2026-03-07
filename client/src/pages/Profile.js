@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { motion } from "framer-motion";
 
 function Profile() {
 
@@ -13,15 +14,22 @@ function Profile() {
 
     const fetchUser = async () => {
 
-      const res = await axios.get(
-        "http://localhost:5000/api/users/me",
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      try {
 
-      setUsername(res.data.username);
-      setProfileImage(res.data.profileImage);
+        const res = await axios.get(
+          "http://localhost:5000/api/users/me",
+          {
+            headers: { Authorization: `Bearer ${token}` }
+          }
+        );
+
+        setUsername(res.data.username);
+        setProfileImage(res.data.profileImage);
+
+      } catch (err) {
+        console.error(err);
+      }
+
     };
 
     fetchUser();
@@ -30,82 +38,115 @@ function Profile() {
 
   const updateUsername = async () => {
 
-    await axios.put(
-      "http://localhost:5000/api/users/username",
-      { username },
-      {
-        headers: { Authorization: `Bearer ${token}` }
-      }
-    );
+    try {
 
-    alert("Username updated");
+      await axios.put(
+        "http://localhost:5000/api/users/username",
+        { username },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      alert("Username updated");
+
+    } catch (err) {
+      console.error(err);
+    }
+
   };
 
   const uploadImage = async () => {
 
-    const formData = new FormData();
-    formData.append("image", image);
+    try {
 
-    const res = await axios.post(
-      "http://localhost:5000/api/users/upload-profile",
-      formData,
-      {
-        headers: { Authorization: `Bearer ${token}` }
-      }
-    );
+      const formData = new FormData();
+      formData.append("image", image);
 
-    setProfileImage(res.data.profileImage);
+      const res = await axios.post(
+        "http://localhost:5000/api/users/upload-profile",
+        formData,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
 
-    alert("Profile image updated");
+      setProfileImage(res.data.profileImage);
+
+      alert("Profile image updated");
+
+    } catch (err) {
+      console.error(err);
+    }
+
   };
 
   return (
 
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen bg-gradient-to-b from-gray-950 via-black to-gray-900 flex items-center justify-center text-white">
 
-      <div className="bg-white shadow-lg rounded-xl p-8 w-96 text-center">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="bg-gray-900 shadow-xl rounded-xl p-8 w-96 text-center"
+      >
 
-        <h2 className="text-2xl font-bold mb-6">Profile</h2>
+        <h2 className="text-2xl font-bold mb-6">
+          Your Profile
+        </h2>
 
-        {profileImage && (
-          <img
-            src={profileImage}
-            alt="profile"
-            className="w-28 h-28 rounded-full mx-auto mb-4 object-cover"
-          />
-        )}
+        {/* Profile Image */}
+
+        <div className="relative w-28 h-28 mx-auto mb-5">
+
+          {profileImage ? (
+            <img
+              src={profileImage}
+              alt="profile"
+              className="w-28 h-28 rounded-full object-cover border-4 border-blue-500 shadow-lg"
+            />
+          ) : (
+            <div className="w-28 h-28 rounded-full bg-gray-700 flex items-center justify-center text-2xl">
+              👤
+            </div>
+          )}
+
+        </div>
+
+        {/* Username */}
 
         <input
           type="text"
           placeholder="New username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="border w-full p-2 rounded mb-3"
+          className="w-full bg-gray-800 border border-gray-700 p-2 rounded mb-3 focus:outline-none focus:border-blue-500"
         />
 
         <button
           onClick={updateUsername}
-          className="bg-blue-500 text-white w-full py-2 rounded hover:bg-blue-600"
+          className="bg-blue-600 hover:bg-blue-700 transition w-full py-2 rounded mb-5"
         >
           Update Username
         </button>
 
-        <br /><br />
+        {/* Upload Image */}
 
         <input
           type="file"
           onChange={(e) => setImage(e.target.files[0])}
-          className="mb-3"
+          className="mb-3 text-sm"
         />
 
         <button
           onClick={uploadImage}
-          className="bg-green-500 text-white w-full py-2 rounded hover:bg-green-600"
+          className="bg-green-600 hover:bg-green-700 transition w-full py-2 rounded"
         >
           Upload Profile Image
         </button>
 
-      </div>
+      </motion.div>
 
     </div>
   );
