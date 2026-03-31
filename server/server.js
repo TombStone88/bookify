@@ -60,6 +60,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/clubs", clubRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/books", bookRoutes);
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Protected Route
 app.get("/api/protected", authMiddleware, (req, res) => {

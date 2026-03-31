@@ -28,7 +28,7 @@ function App() {
 
         <Route path="/profile" element={<Profile />} />
 
-        <Route path="/clubs" element={<Clubs />} />
+        <Route path="/clubs" element={<Clubs/>} />
 
         <Route path="/join/:inviteCode" element={<JoinClub />} />
 

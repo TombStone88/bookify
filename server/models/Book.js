@@ -14,6 +14,7 @@ const bookSchema = new mongoose.Schema({
   clubId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Club",
+    default: null,
   },
 
   currentPage: {
@@ -24,6 +25,13 @@ const bookSchema = new mongoose.Schema({
   totalPages: {
     type: Number,
     default: 1,
+  },
+  progress: {
+    type: Number,
+    default: 0, // 0 to 100
+  },
+  lastReadAt: {
+    type: Date,
   },
 
   uploadedBy: {

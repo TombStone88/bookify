@@ -1,70 +1,56 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 function Navbar() {
   const navigate = useNavigate();
 
-  const [user, setUser] = useState(null);
-  const [open, setOpen] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [image, setImage] = useState(null);
   const [profileImage, setProfileImage] = useState("");
 
-  const dropdownRef = useRef(null);
-
   const token = localStorage.getItem("token");
 
+  const getInitial = (name) => {
+    if (!name) return "U";
+    return name.charAt(0).toUpperCase();
+  };
+
+  // CLOSE DROPDOWN
+  useEffect(() => {
+    const handleClickOutside = () => setShowProfile(false);
+    if (showProfile) window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, [showProfile]);
+
+  // FETCH USER
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/users/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        setUser(res.data);
+        const res = await axios.get(
+          "http://localhost:5000/api/users/me",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         setUsername(res.data.username);
+        setEmail(res.data.email);
         setProfileImage(res.data.profileImage);
       } catch (err) {
-        console.log(err);
+        console.error(err);
       }
     };
-
     fetchUser();
   }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOpen(false);
-        setShowEdit(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/");
-  };
 
   const updateUsername = async () => {
     await axios.put(
       "http://localhost:5000/api/users/username",
       { username },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
+      { headers: { Authorization: `Bearer ${token}` } }
     );
-
-    setUser({ ...user, username });
     alert("Username updated");
   };
 
@@ -75,160 +61,128 @@ function Navbar() {
     const res = await axios.post(
       "http://localhost:5000/api/users/upload-profile",
       formData,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      },
+      { headers: { Authorization: `Bearer ${token}` } }
     );
 
     setProfileImage(res.data.profileImage);
-    setUser({ ...user, profileImage: res.data.profileImage });
-
     alert("Profile image updated");
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
+
   return (
-    <nav className="bg-gray-950/80 backdrop-blur border-b border-gray-800 sticky top-0 z-50">
-      {" "}
-      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <>
+      <div className="flex justify-between items-center mb-10 text-white">
         <h1
           onClick={() => navigate("/dashboard")}
-          className="text-2xl font-bold text-blue-600 cursor-pointer"
+          className="text-2xl font-bold cursor-pointer"
         >
           Bookify
         </h1>
 
-        <div className="flex items-center gap-6">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="text-gray-300 hover:text-blue-400 font-medium"
-          >
-            Dashboard{" "}
-          </button>
+        <div className="flex items-center gap-8 text-lg font-medium">
+          <span onClick={() => navigate("/dashboard")} className="cursor-pointer hover:underline">Home</span>
+          <span onClick={() => navigate("/clubs")} className="cursor-pointer hover:underline">MyClub</span>
 
-          <button
-            onClick={() => navigate("/clubs")}
-            className="text-gray-300 hover:text-blue-600 font-medium"
-          >
-            Clubs{" "}
-          </button>
-
-          <div className="relative" ref={dropdownRef}>
+          {/* AVATAR */}
+          <div className="relative">
             <div
-              className="flex items-center gap-2 cursor-pointer"
-              onClick={() => setOpen(!open)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowProfile(!showProfile);
+              }}
+              className="w-10 h-10 rounded-full overflow-hidden bg-white text-black flex items-center justify-center font-bold cursor-pointer"
             >
-              {user?.profileImage ? (
-                <img
-                  src={user.profileImage}
-                  className="w-10 h-10 rounded-full object-cover border-2 border-blue-500 hover:scale-110 transition"
-                />
+              {profileImage ? (
+                <img src={profileImage} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
-                  👤
-                </div>
+                getInitial(username)
               )}
-
-              <span className="font-medium">{user?.username}</span>
             </div>
 
-            {open && (
-              <div className="absolute right-0 mt-3 w-64 bg-gray-900 text-white rounded-xl shadow-2xl border border-gray-800 p-5 animate-fadeIn">
-                <div className="flex flex-col items-center">
-                  <img
-                    src={
-                      user?.profileImage ||
-                      `https://ui-avatars.com/api/?name=${user?.username}&background=0D8ABC&color=fff`
-                    }
-                    className="w-20 h-20 rounded-full object-cover border-4 border-blue-500 mb-3"
-                  />
+            {/* DROPDOWN */}
+            {showProfile && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-lg p-4 z-50 text-black"
+              >
+                <div className="text-center mb-3">
+                  <div className="w-16 h-16 mx-auto rounded-full overflow-hidden mb-2">
+                    {profileImage ? (
+                      <img src={profileImage} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                        {getInitial(username)}
+                      </div>
+                    )}
+                  </div>
 
-                  <p className="font-semibold text-lg">{user?.username}</p>
-
-                  <p className="text-sm text-gray-400">
-                    Member since{" "}
-                    {new Date(user?.createdAt).toLocaleDateString()}
-                  </p>
+                  <h3 className="font-semibold">{username}</h3>
+                  <p className="text-sm text-gray-500">{email}</p>
                 </div>
 
-                <div className="border-t border-gray-700 my-3"></div>
+                <button
+                  onClick={() => {
+                    setShowProfile(false);
+                    setShowProfileModal(true);
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded"
+                >
+                  Profile Settings
+                </button>
 
-                <div className="text-sm space-y-1 text-gray-300">
-                  <p>📚 Books uploaded: {user?.booksUploaded || 0}</p>
-                  <p>👥 Clubs joined: {user?.clubsJoined || 0}</p>
-                </div>
-
-                <div className="mt-4 flex flex-col gap-2">
-                  <button
-                    onClick={() => setShowEdit(true)}
-                    className="py-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition"
-                  >
-                    ✏ Edit Profile
-                  </button>
-
-                  <button
-                    onClick={handleLogout}
-                    className="py-2 rounded-lg bg-red-600 hover:bg-red-700 transition"
-                  >
-                    Logout
-                  </button>
-                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-red-500"
+                >
+                  Logout
+                </button>
               </div>
             )}
           </div>
         </div>
       </div>
-      {showEdit && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30 animate-fadeIn">
-          <div className="bg-white w-96 rounded-xl shadow-lg p-6 relative animate-scaleIn">
-            <button
-              onClick={() => setShowEdit(false)}
-              className="absolute top-3 right-3"
-            >
-              ✕{" "}
+
+      {/* PROFILE MODAL */}
+      {showProfileModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50">
+          <div onClick={() => setShowProfileModal(false)} className="absolute inset-0" />
+
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-8 w-96 z-50">
+            <h2 className="text-xl font-bold mb-4 text-center">Your Profile</h2>
+
+            <div className="w-24 h-24 mx-auto mb-4">
+              {profileImage ? (
+                <img src={profileImage} className="w-full h-full rounded-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gray-300 rounded-full flex items-center justify-center">
+                  {getInitial(username)}
+                </div>
+              )}
+            </div>
+
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full border p-2 rounded mb-3"
+            />
+
+            <button onClick={updateUsername} className="bg-blue-600 text-white w-full py-2 rounded mb-3">
+              Update Username
             </button>
 
-            <h2 className="text-xl font-semibold mb-4 text-center">
-              Edit Profile
-            </h2>
+            <input type="file" onChange={(e) => setImage(e.target.files[0])} className="mb-3" />
 
-            <div className="flex flex-col items-center">
-              <img
-                src={profileImage}
-                className="w-24 h-24 rounded-full mb-4 object-cover"
-              />
-
-              <input
-                type="file"
-                onChange={(e) => setImage(e.target.files[0])}
-                className="mb-3"
-              />
-
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="border rounded-lg p-2 w-full mb-3"
-                placeholder="Username"
-              />
-
-              <button
-                onClick={updateUsername}
-                className="bg-blue-500 text-white px-4 py-2 rounded-lg w-full mb-2"
-              >
-                Update Username{" "}
-              </button>
-
-              <button
-                onClick={uploadImage}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg w-full"
-              >
-                Upload Image{" "}
-              </button>
-            </div>
+            <button onClick={uploadImage} className="bg-green-600 text-white w-full py-2 rounded">
+              Upload Image
+            </button>
           </div>
         </div>
       )}
-    </nav>
+    </>
   );
 }
 

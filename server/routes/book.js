@@ -6,8 +6,12 @@ const authMiddleware = require("../middleware/authMiddleware");
 
 const multer = require("multer");
 const path = require("path");
+const pdf = require("pdf-poppler");
+const fs = require("fs-extra");
 
-// Storage config
+// =======================
+// 📦 MULTER CONFIG
+// =======================
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "uploads/");
@@ -20,10 +24,11 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-const fs = require("fs-extra");
-
+// =======================
+// 📤 UPLOAD BOOK + AUTO COVER
+// =======================
 router.post(
-  "/upload/:clubId",
+  "/upload/",
   authMiddleware,
   upload.single("file"),
   async (req, res) => {
@@ -35,11 +40,50 @@ router.post(
       }
 
       const filename = req.file.filename;
-
       const pdfPath = req.file.path;
 
       console.log("PDF uploaded:", filename);
 
+      // =======================
+      // 📸 AUTO COVER EXTRACTION
+      // =======================
+      await fs.ensureDir("uploads/covers");
+
+      const baseName = filename.split(".")[0];
+
+      const opts = {
+        format: "png",
+        out_dir: path.join(__dirname, "../uploads/covers"),
+        out_prefix: baseName,
+        page: 1,
+      };
+
+      let coverImageUrl = null;
+
+      try {
+        await pdf.convert(pdfPath, opts);
+
+        const coverFile = `${baseName}-1.png`;
+
+        coverImageUrl = `http://localhost:5000/uploads/covers/${coverFile}`;
+      } catch (err) {
+        console.error("Cover extraction failed:", err);
+
+        // fallback cover
+        coverImageUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          req.body.title
+        )}&size=200`;
+      }
+
+      // =======================
+      // 💾 SAVE BOOK
+      // =======================
+      const mongoose = require("mongoose");
+
+const clubId =
+  req.body.clubId && req.body.clubId !== ""
+    ? new mongoose.Types.ObjectId(req.body.clubId)
+    : null;
       const book = new Book({
         title: req.body.title,
         author: req.body.author,
@@ -47,7 +91,9 @@ router.post(
 
         fileUrl: `http://localhost:5000/uploads/${filename}`,
 
-        clubId: req.params.clubId,
+        coverImage: coverImageUrl, // 👈 AUTO COVER
+
+        clubId: clubId,
 
         uploadedBy: req.user.userId,
       });
@@ -64,14 +110,20 @@ router.post(
         error: error.message,
       });
     }
-  },
+  }
 );
 
-// Get books uploaded by logged-in user
+// =======================
+// 📚 GET USER BOOKS
+// =======================
 router.get("/user/books", authMiddleware, async (req, res) => {
   try {
     const books = await Book.find({
       uploadedBy: req.user.userId,
+      $or: [
+        { clubId: null },
+        { clubId: { $exists: false } }
+      ]
     });
 
     res.json(books);
@@ -82,15 +134,26 @@ router.get("/user/books", authMiddleware, async (req, res) => {
   }
 });
 
-// Get club books
+// =======================
+// 📚 GET CLUB BOOKS
+// =======================
 router.get("/:clubId", authMiddleware, async (req, res) => {
-  const books = await Book.find({
-    clubId: req.params.clubId,
-  });
+  try {
+    const books = await Book.find({
+      clubId: req.params.clubId,
+    });
 
-  res.json(books);
+    res.json(books);
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+    });
+  }
 });
-// delete book
+
+// =======================
+// 🗑 DELETE BOOK
+// =======================
 router.delete("/delete/:id", authMiddleware, async (req, res) => {
   try {
     const book = await Book.findById(req.params.id);
@@ -111,19 +174,26 @@ router.delete("/delete/:id", authMiddleware, async (req, res) => {
   }
 });
 
-router.put("/progress/:bookId", authMiddleware, async (req, res) => {
+// =======================
+// 📖 UPDATE PROGRESS
+// =======================
+// update progress
+router.put("/progress/:id", authMiddleware, async (req, res) => {
   try {
-    const { page } = req.body;
+    const { progress } = req.body;
 
-    const book = await Book.findById(req.params.bookId);
+    const book = await Book.findByIdAndUpdate(
+      req.params.id,
+      {
+        progress,
+        lastReadAt: new Date(),
+      },
+      { new: true }
+    );
 
-    book.currentPage = page;
-
-    await book.save();
-
-    res.json({ message: "Progress updated" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.json(book);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update progress" });
   }
 });
 
