@@ -22,7 +22,7 @@ function Clubs() {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await axios.get("http://localhost:5000/api/clubs/my-clubs", {
+      const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/clubs/my-clubs`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -45,7 +45,7 @@ function Clubs() {
     try {
       const token = localStorage.getItem("token");
 
-      await axios.post("http://localhost:5000/api/clubs/create", form, {
+      await axios.post(`${process.env.REACT_APP_API_URL}/api/clubs/create`, form, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -71,7 +71,7 @@ function Clubs() {
       const token = localStorage.getItem("token");
 
       await axios.post(
-        `http://localhost:5000/api/clubs/join/${inviteCode}`,
+        `${process.env.REACT_APP_API_URL}/api/clubs/join/${inviteCode}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -89,7 +89,7 @@ function Clubs() {
       const token = localStorage.getItem("token");
 
       await axios.delete(
-        `http://localhost:5000/api/clubs/leave/${clubId}`,
+        `${process.env.REACT_APP_API_URL}/api/clubs/leave/${clubId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

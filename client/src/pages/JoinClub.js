@@ -21,7 +21,7 @@ function JoinClub() {
       const token = localStorage.getItem("token");
 
       await axios.post(
-        `http://localhost:5000/api/clubs/join/${inviteCode}`,
+        `${process.env.REACT_APP_API_URL}/api/clubs/join/${inviteCode}`,
         {},
         {
           headers: {

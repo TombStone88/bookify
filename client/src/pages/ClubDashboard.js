@@ -53,7 +53,7 @@ function ClubDashboard() {
   const fetchMembers = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/clubs/members/${clubId}`,
+        `${process.env.REACT_APP_API_URL}/api/clubs/members/${clubId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -72,7 +72,7 @@ function ClubDashboard() {
   const removeMember = async (memberId) => {
     try {
       await axios.delete(
-        `http://localhost:5000/api/clubs/remove-member/${clubId}/${memberId}`,
+        `${process.env.REACT_APP_API_URL}/api/clubs/remove-member/${clubId}/${memberId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -93,7 +93,7 @@ function ClubDashboard() {
     if (!confirmDelete) return;
 
     try {
-      await axios.delete(`http://localhost:5000/api/clubs/delete/${clubId}`, {
+      await axios.delete(`${process.env.REACT_APP_API_URL}/api/clubs/delete/${clubId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -109,7 +109,7 @@ function ClubDashboard() {
 
   // FETCH BOOKS
   const fetchBooks = async () => {
-    const res = await axios.get(`http://localhost:5000/api/books/${clubId}`, {
+    const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/books/${clubId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -122,7 +122,7 @@ function ClubDashboard() {
   // FETCH CHAT
   const fetchMessages = async () => {
     const res = await axios.get(
-      `http://localhost:5000/api/messages/${clubId}`,
+      `${process.env.REACT_APP_API_URL}/api/messages/${clubId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -140,7 +140,7 @@ function ClubDashboard() {
 
   try {
     const res = await axios.post(
-      `http://localhost:5000/api/messages/send/${clubId}`,
+      `${process.env.REACT_APP_API_URL}/api/messages/send/${clubId}`,
       { text },
       {
         headers: {
@@ -193,7 +193,7 @@ function ClubDashboard() {
   // ✅ THIS IS CRITICAL
   data.append("clubId", clubId);
 
-  await axios.post("http://localhost:5000/api/books/upload", data, {
+  await axios.post(`${process.env.REACT_APP_API_URL}/api/books/upload`, data, {
     headers: {
       Authorization: `Bearer ${token}`,
     },

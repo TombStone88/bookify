@@ -18,7 +18,7 @@ function PDFViewer() {
         const token = localStorage.getItem("token");
 
         await axios.put(
-          `http://localhost:5000/api/books/progress/${bookId}`,
+          `${process.env.REACT_APP_API_URL}/api/books/progress/${bookId}`,
           { progress: 10 },
           {
             headers: {

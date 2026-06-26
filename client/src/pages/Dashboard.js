@@ -23,7 +23,7 @@ function Dashboard() {
   }, []);
 
   const fetchBooks = async () => {
-    const res = await axios.get("http://localhost:5000/api/books/user/books", {
+    const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/books/user/books`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     setBooks(res.data);
@@ -31,7 +31,7 @@ function Dashboard() {
   };
 
   const deleteBook = async (id) => {
-    await axios.delete(`http://localhost:5000/api/books/delete/${id}`, {
+    await axios.delete(`${process.env.REACT_APP_API_URL}/api/books/delete/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     fetchBooks();
@@ -62,7 +62,7 @@ function Dashboard() {
     data.append("file", form.file);
 
     // ✅ personal upload (NO clubId)
-    await axios.post("http://localhost:5000/api/books/upload", data, {
+    await axios.post(`${process.env.REACT_APP_API_URL}/api/books/upload`, data, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

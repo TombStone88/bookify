@@ -15,7 +15,7 @@ function Profile() {
     const fetchUser = async () => {
       try {
         const res = await axios.get(
-          "http://localhost:5000/api/users/me",
+          `${process.env.REACT_APP_API_URL}/api/users/me`,
           {
             headers: { Authorization: `Bearer ${token}` }
           }
@@ -35,7 +35,7 @@ function Profile() {
   const updateUsername = async () => {
     try {
       await axios.put(
-        "http://localhost:5000/api/users/username",
+        `${process.env.REACT_APP_API_URL}/api/users/username`,
         { username },
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -55,7 +55,7 @@ function Profile() {
       formData.append("image", image);
 
       const res = await axios.post(
-        "http://localhost:5000/api/users/upload-profile",
+        `${process.env.REACT_APP_API_URL}/api/users/upload-profile`,
         formData,
         {
           headers: { Authorization: `Bearer ${token}` }

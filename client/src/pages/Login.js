@@ -23,7 +23,7 @@ function Login() {
     try {
 
       const res = await axios.post(
-        "https://bookify-api.onrender.com/api/auth/login",
+        `${process.env.REACT_APP_API_URL}/api/auth/login`,
         form
       );
 
