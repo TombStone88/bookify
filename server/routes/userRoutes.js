@@ -27,7 +27,7 @@ router.post(
   async (req, res) => {
 
     const imageUrl =
-      `http://localhost:5000/uploads/profile/${req.file.filename}`;
+      `/uploads/profile/${req.file.filename}`;
 
     const user = await User.findByIdAndUpdate(
       req.user.userId,
