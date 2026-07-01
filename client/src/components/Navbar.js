@@ -1,189 +1,216 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import api, { resolveFileUrl } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
-function Navbar() {
-  const navigate = useNavigate();
+const NAV_LINKS = [
+  { label: 'Home',     path: '/dashboard' },
+  { label: 'My Clubs', path: '/clubs' },
+];
 
-  const [showProfile, setShowProfile] = useState(false);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [image, setImage] = useState(null);
-  const [profileImage, setProfileImage] = useState("");
-
-  const token = localStorage.getItem("token");
-
-  const getInitial = (name) => {
-    if (!name) return "U";
-    return name.charAt(0).toUpperCase();
-  };
-
-  // CLOSE DROPDOWN
-  useEffect(() => {
-    const handleClickOutside = () => setShowProfile(false);
-    if (showProfile) window.addEventListener("click", handleClickOutside);
-    return () => window.removeEventListener("click", handleClickOutside);
-  }, [showProfile]);
-
-  // FETCH USER
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const res = await axios.get(
-          "http://localhost:5000/api/users/me",
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setUsername(res.data.username);
-        setEmail(res.data.email);
-        setProfileImage(res.data.profileImage);
-      } catch (err) {
-        console.error(err);
+function Avatar({ username, profileImage, size = 36 }) {
+  const initial = username ? username.charAt(0).toUpperCase() : 'U';
+  const resolvedImage = profileImage ? resolveFileUrl(profileImage) : null;
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', overflow: 'hidden',
+      background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontWeight: 700, fontSize: size * 0.4, color: 'white', flexShrink: 0,
+      border: '2px solid #ece4ff',
+    }}>
+      {resolvedImage
+        ? <img src={resolvedImage} alt={username} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : initial
       }
+    </div>
+  );
+}
+
+export default function Navbar() {
+  const navigate       = useNavigate();
+  const location       = useLocation();
+  const { logout }     = useAuth();
+  const dropdownRef    = useRef(null);
+
+  const [showDropdown, setShowDropdown]   = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [username, setUsername]           = useState('');
+  const [email, setEmail]                 = useState('');
+  const [profileImage, setProfileImage]   = useState('');
+  const [image, setImage]                 = useState(null);
+  const [saving, setSaving]               = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false);
     };
-    fetchUser();
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  useEffect(() => {
+    api.get('/api/users/me').then(res => {
+      setUsername(res.data.username);
+      setEmail(res.data.email);
+      setProfileImage(res.data.profileImage);
+    }).catch(() => {});
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/', { replace: true });
+    toast.success('Logged out successfully');
+  };
+
   const updateUsername = async () => {
-    await axios.put(
-      "http://localhost:5000/api/users/username",
-      { username },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    alert("Username updated");
+    try {
+      setSaving(true);
+      await api.put('/api/users/username', { username });
+      toast.success('Username updated');
+    } catch { toast.error('Failed to update'); }
+    finally { setSaving(false); }
   };
 
   const uploadImage = async () => {
-    const formData = new FormData();
-    formData.append("image", image);
-
-    const res = await axios.post(
-      "http://localhost:5000/api/users/upload-profile",
-      formData,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    setProfileImage(res.data.profileImage);
-    alert("Profile image updated");
+    if (!image) return;
+    try {
+      setSaving(true);
+      const formData = new FormData();
+      formData.append('image', image);
+      const res = await api.post('/api/users/upload-profile', formData);
+      setProfileImage(res.data.profileImage);
+      setImage(null);
+      toast.success('Profile photo updated');
+    } catch { toast.error('Upload failed'); }
+    finally { setSaving(false); }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
+  const isActive = (path) => location.pathname === path;
 
   return (
     <>
-      <div className="flex justify-between items-center mb-10 text-white">
-        <h1
-          onClick={() => navigate("/dashboard")}
-          className="text-2xl font-bold cursor-pointer"
-        >
-          Bookify
-        </h1>
+      <nav style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 40, paddingBottom: 20, borderBottom: '1px solid #ececf3',
+      }}>
+        <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📚</div>
+          <span style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1f2230' }}>Bookify</span>
+        </div>
 
-        <div className="flex items-center gap-8 text-lg font-medium">
-          <span onClick={() => navigate("/dashboard")} className="cursor-pointer hover:underline">Home</span>
-          <span onClick={() => navigate("/clubs")} className="cursor-pointer hover:underline">MyClub</span>
-
-          {/* AVATAR */}
-          <div className="relative">
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowProfile(!showProfile);
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          {NAV_LINKS.map(link => (
+            <button key={link.path}
+              onClick={() => navigate(link.path)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500,
+                color: isActive(link.path) ? '#7c3aed' : '#6b6b80',
+                padding: '4px 8px', borderRadius: 6,
+                borderBottom: isActive(link.path) ? '2px solid #7c3aed' : '2px solid transparent',
               }}
-              className="w-10 h-10 rounded-full overflow-hidden bg-white text-black flex items-center justify-center font-bold cursor-pointer"
+              onMouseEnter={e => { if (!isActive(link.path)) e.currentTarget.style.color = '#1f2230'; }}
+              onMouseLeave={e => { if (!isActive(link.path)) e.currentTarget.style.color = '#6b6b80'; }}
             >
-              {profileImage ? (
-                <img src={profileImage} className="w-full h-full object-cover" />
-              ) : (
-                getInitial(username)
-              )}
-            </div>
+              {link.label}
+            </button>
+          ))}
 
-            {/* DROPDOWN */}
-            {showProfile && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 mt-3 w-64 bg-white rounded-xl shadow-lg p-4 z-50 text-black"
-              >
-                <div className="text-center mb-3">
-                  <div className="w-16 h-16 mx-auto rounded-full overflow-hidden mb-2">
-                    {profileImage ? (
-                      <img src={profileImage} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                        {getInitial(username)}
-                      </div>
-                    )}
-                  </div>
+          <div ref={dropdownRef} style={{ position: 'relative' }}>
+            <button onClick={() => setShowDropdown(p => !p)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: 2 }}>
+              <Avatar username={username} profileImage={profileImage} size={36} />
+            </button>
 
-                  <h3 className="font-semibold">{username}</h3>
-                  <p className="text-sm text-gray-500">{email}</p>
+            {showDropdown && (
+              <div className="glass-strong animate-scaleIn" style={{
+                position: 'absolute', right: 0, top: 'calc(100% + 12px)', width: 220, borderRadius: 14, padding: 12, zIndex: 100,
+                transformOrigin: 'top right',
+              }}>
+                <div style={{ padding: '8px 12px 12px', borderBottom: '1px solid #ececf3', marginBottom: 8 }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#1f2230', marginBottom: 2 }}>{username || 'User'}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#a4a4b8' }}>{email}</div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    setShowProfile(false);
-                    setShowProfileModal(true);
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded"
-                >
-                  Profile Settings
-                </button>
+                {[
+                  { label: '⚙️  Profile settings', action: () => { setShowDropdown(false); setShowProfileModal(true); } },
+                  { label: '🏠  Dashboard', action: () => navigate('/dashboard') },
+                  { label: '🏛️  My Clubs', action: () => navigate('/clubs') },
+                ].map(item => (
+                  <button key={item.label} onClick={item.action}
+                    style={{
+                      width: '100%', textAlign: 'left', padding: '8px 12px', borderRadius: 8,
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: '#44445a', fontSize: '0.875rem', fontWeight: 500,
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#f7f5ff'; e.currentTarget.style.color = '#1f2230'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#44445a'; }}
+                  >
+                    {item.label}
+                  </button>
+                ))}
 
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-red-500"
-                >
-                  Logout
-                </button>
+                <div style={{ borderTop: '1px solid #ececf3', marginTop: 8, paddingTop: 8 }}>
+                  <button onClick={handleLogout}
+                    style={{
+                      width: '100%', textAlign: 'left', padding: '8px 12px', borderRadius: 8,
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: '#ef4444', fontSize: '0.875rem', fontWeight: 500,
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    🚪  Log out
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
-      </div>
+      </nav>
 
-      {/* PROFILE MODAL */}
       {showProfileModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center z-50">
-          <div onClick={() => setShowProfileModal(false)} className="absolute inset-0" />
-
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl p-8 w-96 z-50">
-            <h2 className="text-xl font-bold mb-4 text-center">Your Profile</h2>
-
-            <div className="w-24 h-24 mx-auto mb-4">
-              {profileImage ? (
-                <img src={profileImage} className="w-full h-full rounded-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gray-300 rounded-full flex items-center justify-center">
-                  {getInitial(username)}
-                </div>
-              )}
+        <div className="modal-backdrop" onClick={() => setShowProfileModal(false)}>
+          <div className="glass-strong animate-scaleIn"
+            style={{ width: '100%', maxWidth: 400, borderRadius: 20, padding: '2rem', margin: '1rem', zIndex: 1000 }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <h2 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#1f2230' }}>Profile Settings</h2>
+              <button onClick={() => setShowProfileModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#a4a4b8', fontSize: '1.3rem' }}>×</button>
             </div>
 
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full border p-2 rounded mb-3"
-            />
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ display: 'inline-block', position: 'relative' }}>
+                <Avatar username={username} profileImage={profileImage} size={80} />
+              </div>
+            </div>
 
-            <button onClick={updateUsername} className="bg-blue-600 text-white w-full py-2 rounded mb-3">
-              Update Username
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: '#6b6b80', fontWeight: 500, marginBottom: 6 }}>Username</label>
+                <input value={username} onChange={e => setUsername(e.target.value)} className="input-base" />
+              </div>
+              <button onClick={updateUsername} disabled={saving} className="btn-primary" style={{ width: '100%' }}>
+                {saving ? 'Saving…' : 'Update username'}
+              </button>
 
-            <input type="file" onChange={(e) => setImage(e.target.files[0])} className="mb-3" />
+              <div style={{ height: 1, background: '#ececf3', margin: '8px 0' }} />
 
-            <button onClick={uploadImage} className="bg-green-600 text-white w-full py-2 rounded">
-              Upload Image
-            </button>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: '#6b6b80', fontWeight: 500, marginBottom: 6 }}>Profile photo</label>
+                <input type="file" accept="image/*" onChange={e => setImage(e.target.files[0])} style={{ width: '100%', fontSize: '0.85rem', color: '#6b6b80' }} />
+              </div>
+
+              {image && (
+                <button onClick={uploadImage} disabled={saving} className="btn-primary" style={{ width: '100%' }}>
+                  {saving ? 'Uploading…' : 'Upload photo'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
     </>
   );
 }
-
-export default Navbar;

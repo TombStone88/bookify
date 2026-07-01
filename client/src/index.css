@@ -1,26 +1,113 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@keyframes fadeIn {
-from {opacity:0; transform:translateY(-8px);}
-to {opacity:1; transform:translateY(0);}
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #f7f7fb;
+  color: #1f2230;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
 }
 
-.animate-fadeIn{
-animation: fadeIn .2s ease;
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.25); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.45); }
+
+@keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.animate-fadeIn  { animation: fadeIn 0.4s ease forwards; }
+.animate-slideUp { animation: slideUp 0.4s ease forwards; }
+.animate-scaleIn { animation: scaleIn 0.25s ease forwards; }
+.animate-float   { animation: float 6s ease-in-out infinite; }
+
+/* ── Skeleton shimmer ─────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #ececf3 25%, #f5f5fa 50%, #ececf3 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
 }
 
-@keyframes scaleIn {
-from {opacity:0; transform:scale(.9);}
-to {opacity:1; transform:scale(1);}
+/* ── Card (the "glass" replacement) ──────────────────────── */
+.glass {
+  background: #ffffff;
+  border: 1px solid #ececf3;
+  box-shadow: 0 1px 3px rgba(20,20,40,0.04);
+}
+.glass-strong {
+  background: #ffffff;
+  border: 1px solid #e4e4ef;
+  box-shadow: 0 20px 60px rgba(20,20,40,0.18);
 }
 
-.animate-scaleIn{
-animation: scaleIn .2s ease;
+/* ── Inputs ───────────────────────────────────────────────── */
+.input-base {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: #fbfbfe;
+  border: 1px solid #e2e2ee;
+  border-radius: 10px;
+  color: #1f2230;
+  font-size: 0.9375rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.input-base::placeholder { color: #a4a4b8; }
+.input-base:focus {
+  border-color: #7c3aed;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.12);
 }
 
-.avatar-hover:hover{
-  transform: scale(1.05);
-  transition: .2s;
+/* ── Buttons ──────────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: white; font-weight: 600; border-radius: 10px; border: none; cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
+  box-shadow: 0 4px 14px rgba(124,58,237,0.25);
+}
+.btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(124,58,237,0.35); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #ffffff; color: #44445a; font-weight: 500; border-radius: 10px;
+  border: 1px solid #e2e2ee; cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-ghost:hover { background: #f7f5ff; color: #1f2230; border-color: #d6cdfb; }
+
+/* ── Book card hover ──────────────────────────────────────── */
+.book-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.book-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 12px 28px rgba(20,20,40,0.12); }
+
+/* ── Progress bar ─────────────────────────────────────────── */
+.progress-bar { height: 4px; background: #ececf3; border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #7c3aed, #a78bfa); border-radius: 99px; transition: width 0.6s ease; }
+
+/* ── Chat bubble ──────────────────────────────────────────── */
+.bubble-me { background: linear-gradient(135deg, #7c3aed, #6d28d9); color: white; border-radius: 18px 18px 4px 18px; }
+.bubble-other { background: #f1f0f8; color: #1f2230; border-radius: 18px 18px 18px 4px; }
+
+/* ── Modal backdrop ───────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(20,16,36,0.45);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; z-index: 999;
 }

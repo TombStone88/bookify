@@ -179,7 +179,9 @@ router.get("/members/:clubId", authMiddleware, async (req, res) => {
 
     res.json({
       members: club.members,
-      admin: adminId
+      admin: adminId,
+      inviteCode: club.inviteCode,
+      name: club.name
     });
 
   } catch (error) {

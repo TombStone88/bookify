@@ -6,6 +6,16 @@ require("dotenv").config();
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
+const fs = require("fs");
+
+// ── ENSURE UPLOAD DIRECTORIES EXIST ─────────────────────────
+// Prevents multer ENOENT errors on first deploy / fresh containers
+["uploads", "uploads/covers", "uploads/profile"].forEach((dir) => {
+  const fullPath = path.join(__dirname, dir);
+  if (!fs.existsSync(fullPath)) {
+    fs.mkdirSync(fullPath, { recursive: true });
+  }
+});
 
 const userRoutes = require("./routes/userRoutes");
 const clubRoutes = require("./routes/club");

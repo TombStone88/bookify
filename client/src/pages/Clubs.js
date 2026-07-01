@@ -1,319 +1,172 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import Navbar from "../components/Navbar";
-import toast from "react-hot-toast";
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../utils/api';
+import Navbar from '../components/Navbar';
+import toast from 'react-hot-toast';
 
-
-function Clubs() {
-  const [clubs, setClubs] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [inviteCode, setInviteCode] = useState("");
-
-  const [form, setForm] = useState({
-    name: "",
-    description: "",
-  });
-
-  useEffect(() => {
-    fetchClubs();
-  }, []);
-
-  const fetchClubs = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const res = await axios.get(`${process.env.REACT_APP_API_URL}/api/clubs/my-clubs`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setClubs(res.data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    try {
-      const token = localStorage.getItem("token");
-
-      await axios.post(`${process.env.REACT_APP_API_URL}/api/clubs/create`, form, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      setShowModal(false);
-      setForm({ name: "", description: "" });
-      fetchClubs();
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const openClub = (clubId) => {
-    window.location.href = `/club/${clubId}`;
-  };
-
-  const copyInviteLink = (code) => {
-    navigator.clipboard.writeText(code);
-    toast.success("Invite code copied!");
-  };
-
-  const joinClub = async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      await axios.post(
-        `${process.env.REACT_APP_API_URL}/api/clubs/join/${inviteCode}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      toast.success("Joined club successfully");
-      setInviteCode("");
-      fetchClubs();
-    } catch (err) {
-      toast.error("Invalid invite code");
-    }
-  };
-
-  const leaveClub = async (clubId) => {
-    try {
-      const token = localStorage.getItem("token");
-
-      await axios.delete(
-        `${process.env.REACT_APP_API_URL}/api/clubs/leave/${clubId}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      toast.success("Left club");
-      fetchClubs();
-    } catch (error) {
-      toast.error("Could not leave club");
-    }
-  };
-
-  const [text, setText] = useState("");
-const fullText = "Your Clubs 👥";
-
-useEffect(() => {
-  let i = 0;
-  const interval = setInterval(() => {
-    setText(fullText.slice(0, i + 1));
-    i++;
-    if (i === fullText.length) clearInterval(interval);
-  }, 70);
-
-  return () => clearInterval(interval);
-}, []);
-
+function ClubCard({ club, onOpen, onLeave }) {
+  const [hover, setHover] = useState(false);
   return (
-    <div className="min-h-screen bg-white flex justify-center py-10">
-      <div className="w-[95%] min-h-[90vh] rounded-3xl bg-gradient-to-br from-pink-500 via-red-500 to-pink-600 shadow-xl p-10">
-
-        <Navbar />
-
-        {/* HERO with typing */}
-        <div className="text-center text-white mb-12">
-          <h1 className="text-5xl font-bold">
-  {text}
-  <span className="animate-pulse">|</span>
-</h1>
-          <p className="mt-2 opacity-90">
-            Connect, share, and grow together
-          </p>
-        </div>
-
-        {/* MAIN LAYOUT */}
-        <div className="grid lg:grid-cols-4 gap-10">
-
-          {/* LEFT → CLUBS */}
-          <div className="lg:col-span-3">
-            <div className="grid sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-6">
-
-              {clubs.map((club) => {
-                const members = club.members?.length || Math.floor(Math.random() * 50 + 5);
-                const isActive = Math.random() > 0.5;
-
-                return (
-                  <div
-                    key={club._id}
-                    className="bg-white/95 backdrop-blur-md p-6 rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition border border-white/40"
-                  >
-
-                    {/* HEADER */}
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-red-500 flex items-center justify-center text-white font-bold">
-                        {club.name.charAt(0).toUpperCase()}
-                      </div>
-
-                      <div>
-                        <h2 className="font-semibold text-gray-800">
-                          {club.name}
-                        </h2>
-                        <p className="text-xs text-gray-400">
-                          {members} members
-                        </p>
-                      </div>
-                    </div>
-
-                    <p className="text-gray-500 text-sm mb-3 line-clamp-2">
-                      {club.description}
-                    </p>
-
-                    {/* ACTIVITY */}
-                    <div className="flex items-center gap-2 text-xs mb-3">
-                      <div className={`w-2 h-2 rounded-full ${isActive ? "bg-green-500" : "bg-gray-400"}`} />
-                      <span className="text-gray-500">
-                        {isActive ? "Active" : "Low activity"}
-                      </span>
-                    </div>
-
-                    {/* CODE */}
-                    <div className="font-mono text-xs bg-gray-100 px-2 py-1 rounded inline-block mb-4">
-                      {club.inviteCode}
-                    </div>
-
-                    {/* BUTTONS */}
-                    <div className="flex flex-col gap-2">
-                      <button
-                        onClick={() => openClub(club._id)}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 text-white py-2 rounded-lg"
-                      >
-                        Open
-                      </button>
-
-                      <button
-                        onClick={() => copyInviteLink(club.inviteCode)}
-                        className="bg-gray-100 text-gray-700 py-2 rounded-lg hover:bg-gray-200"
-                      >
-                        Copy
-                      </button>
-
-                      <button
-                        onClick={() => leaveClub(club._id)}
-                        className="text-red-500 py-2 rounded-lg hover:bg-red-50"
-                      >
-                        Leave
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-
-            </div>
-          </div>
-
-          {/* RIGHT → ACTION PANEL */}
-          <div className="bg-white/90 backdrop-blur-md p-6 rounded-2xl shadow-lg h-fit border border-white/40 flex flex-col gap-6">
-
-  {/* JOIN SECTION */}
-  <div>
-    <h2 className="font-semibold mb-3 text-gray-700">
-      Join a Club
-    </h2>
-
-    <div className="flex gap-2">
-      <input
-        type="text"
-        placeholder="Invite code..."
-        value={inviteCode}
-        onChange={(e) => setInviteCode(e.target.value)}
-        className="flex-1 border px-3 py-2 rounded-lg outline-none focus:ring-2 focus:ring-pink-400"
-      />
-
-      <button
-        onClick={joinClub}
-        className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 rounded-lg font-medium hover:scale-105 transition"
-      >
-        Join
-      </button>
-    </div>
-  </div>
-
-  {/* DIVIDER */}
-  <div className="border-t border-gray-200"></div>
-
-  {/* CREATE SECTION */}
-  <div>
-    <h2 className="font-semibold mb-3 text-gray-700">
-      Create a Club
-    </h2>
-
-    <button
-      onClick={() => setShowModal(true)}
-      className="w-full bg-gradient-to-r from-pink-500 to-red-500 text-white py-2 rounded-lg font-medium hover:scale-105 transition"
+    <div
+      className="glass book-card"
+      style={{ borderRadius: 18, overflow: 'hidden', cursor: 'pointer', border: hover ? '1px solid #c4b5fd' : '1px solid #ececf3' }}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+      onClick={() => onOpen(club._id)}
     >
-      + Create Club
-    </button>
-  </div>
-
-</div>
-        </div>
-
+      <div style={{
+        height: 90,
+        background: `linear-gradient(135deg, hsl(${(club.name.charCodeAt(0) * 37) % 360}, 60%, 88%), hsl(${(club.name.charCodeAt(0) * 57) % 360}, 50%, 80%))`,
+        display: 'flex', alignItems: 'flex-end', padding: '0 1.25rem 12px',
+      }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, fontSize: 22, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center' }}>🏛</div>
       </div>
 
-      {/* MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
+      <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
+        <h3 style={{ fontWeight: 700, color: '#1f2230', fontSize: '1rem', marginBottom: 6 }}>{club.name}</h3>
+        <p style={{ fontSize: '0.82rem', color: '#8a8aa0', marginBottom: 16, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          {club.description || 'No description provided.'}
+        </p>
 
-          <div className="bg-white p-6 rounded-xl shadow-lg w-96">
-
-            <h2 className="font-bold mb-4 text-lg">
-              Create Club
-            </h2>
-
-            <form onSubmit={handleSubmit}>
-
-              <input
-                name="name"
-                placeholder="Club name"
-                onChange={handleChange}
-                className="w-full border p-2 mb-3 rounded"
-                required
-              />
-
-              <textarea
-                name="description"
-                placeholder="Description"
-                onChange={handleChange}
-                className="w-full border p-2 mb-3 rounded"
-                required
-              />
-
-              <div className="flex justify-end gap-2">
-
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="border px-4 py-2 rounded"
-                >
-                  Cancel
-                </button>
-
-                <button className="bg-pink-500 text-white px-4 py-2 rounded">
-                  Create
-                </button>
-
-              </div>
-
-            </form>
-
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <span style={{ fontSize: '0.75rem', color: '#a4a4b8', display: 'flex', alignItems: 'center', gap: 4 }}>👥 {club.members?.length || 0}</span>
+            <span style={{ fontSize: '0.75rem', color: '#a4a4b8', display: 'flex', alignItems: 'center', gap: 4 }}>📚 {club.books?.length || 0} books</span>
           </div>
-
+          <button onClick={e => { e.stopPropagation(); onLeave(club._id); }}
+            style={{ fontSize: '0.72rem', padding: '3px 10px', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: '#ef4444', cursor: 'pointer', fontWeight: 500 }}>
+            Leave
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-export default Clubs;
+function CreateClubModal({ onClose, onSuccess }) {
+  const [form, setForm]       = useState({ name: '', description: '' });
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.post('/api/clubs/create', form);
+      toast.success(`Club "${form.name}" created!`);
+      onSuccess();
+    } catch { toast.error('Failed to create club'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="glass-strong animate-scaleIn" style={{ width: '100%', maxWidth: 420, borderRadius: 20, padding: '2rem', margin: '1rem', zIndex: 1000 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2 style={{ fontWeight: 800, fontSize: '1.2rem', color: '#1f2230' }}>Create a Club</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#a4a4b8', fontSize: '1.5rem' }}>×</button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: '#6b6b80', fontWeight: 500, marginBottom: 6 }}>Club name</label>
+            <input className="input-base" placeholder="e.g. Science Fiction Lovers" required value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8rem', color: '#6b6b80', fontWeight: 500, marginBottom: 6 }}>Description</label>
+            <textarea className="input-base" placeholder="What does your club read?" style={{ resize: 'vertical', minHeight: 80 }} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+          </div>
+          <button type="submit" disabled={loading} className="btn-primary" style={{ width: '100%', padding: '0.875rem' }}>
+            {loading ? 'Creating…' : 'Create Club'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function Clubs() {
+  const navigate  = useNavigate();
+  const [clubs, setClubs]           = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+
+  const fetchClubs = async () => {
+    try {
+      const res = await api.get('/api/clubs/my-clubs');
+      setClubs(res.data);
+    } catch { toast.error('Failed to load clubs'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { fetchClubs(); }, []);
+
+  const leaveClub = async (clubId) => {
+    if (!window.confirm('Leave this club?')) return;
+    try {
+      await api.delete(`/api/clubs/leave/${clubId}`);
+      toast.success('Left club');
+      setClubs(p => p.filter(c => c._id !== clubId));
+    } catch { toast.error('Failed to leave club'); }
+  };
+
+  const joinByCode = async (e) => {
+    e.preventDefault();
+    if (!inviteCode.trim()) return;
+    try {
+      await api.post(`/api/clubs/join/${inviteCode.trim()}`);
+      toast.success('Joined club!');
+      setInviteCode('');
+      fetchClubs();
+    } catch { toast.error('Invalid invite code'); }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f7f7fb', padding: 'clamp(1.5rem, 4vw, 2.5rem)' }}>
+      <div style={{ maxWidth: 1300, margin: '0 auto' }}>
+        <Navbar />
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <h1 style={{ fontSize: 'clamp(1.5rem,3vw,2rem)', fontWeight: 800, color: '#1f2230', marginBottom: 6 }}>My Clubs</h1>
+            <p style={{ color: '#8a8aa0', fontSize: '0.9rem' }}>Read together, discuss more.</p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <form onSubmit={joinByCode} style={{ display: 'flex', gap: 8 }}>
+              <input value={inviteCode} onChange={e => setInviteCode(e.target.value)} placeholder="Invite code…" className="input-base" style={{ width: 160 }} />
+              <button type="submit" className="btn-ghost" style={{ whiteSpace: 'nowrap' }}>Join</button>
+            </form>
+            <button onClick={() => setShowCreate(true)} className="btn-primary">+ New Club</button>
+          </div>
+        </div>
+
+        {loading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px,1fr))', gap: 20 }}>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="glass" style={{ borderRadius: 18, height: 200 }}>
+                <div className="skeleton" style={{ height: 90, borderRadius: '18px 18px 0 0' }} />
+                <div style={{ padding: 16 }}>
+                  <div className="skeleton" style={{ height: 14, width: '60%', borderRadius: 6, marginBottom: 8 }} />
+                  <div className="skeleton" style={{ height: 12, width: '90%', borderRadius: 6 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : clubs.length === 0 ? (
+          <div className="glass" style={{ borderRadius: 20, padding: '5rem 2rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', marginBottom: 16 }}>🏛</div>
+            <h3 style={{ fontWeight: 700, fontSize: '1.2rem', color: '#1f2230', marginBottom: 8 }}>No clubs yet</h3>
+            <p style={{ color: '#8a8aa0', maxWidth: 320, margin: '0 auto 24px' }}>Create a club or join one with an invite code to start reading with others.</p>
+            <button onClick={() => setShowCreate(true)} className="btn-primary">Create your first club</button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px,1fr))', gap: 20 }}>
+            {clubs.map(club => <ClubCard key={club._id} club={club} onOpen={id => navigate(`/club/${id}`)} onLeave={leaveClub} />)}
+          </div>
+        )}
+      </div>
+
+      {showCreate && <CreateClubModal onClose={() => setShowCreate(false)} onSuccess={() => { setShowCreate(false); fetchClubs(); }} />}
+    </div>
+  );
+}
