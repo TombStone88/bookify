@@ -1,131 +1,157 @@
 # 📚 Bookify
 
-A full-stack Book Management System that allows users to browse, search, and manage books through a clean and responsive interface.
+Bookify is a full-stack MERN web application developed as a college project for book lovers. It allows users to discover, share, and chat about books through a simple and interactive platform. The main goal of this project was to learn full-stack web development and build a real-world application using the MERN stack.
+
+## 🌐 Live Demo
+
+🔗 **Website: https://bookify-beta-rosy.vercel.app/
+
+---
 
 ## ✨ Features
 
-- 🔐 User Authentication (Login & Register)
-- 📚 Book Management
-- 🔍 Search Books
-- 👤 User Dashboard
-- 📖 Book Details
-- 📱 Responsive Design
+* User registration and login
+* Secure authentication using JWT
+* Create and manage user profiles
+* Browse and search books
+* Add and manage book posts
+* Real-time chat using Socket.IO
+* Responsive design for desktop and mobile
+* Clean and user-friendly interface
+
+---
 
 ## 🛠️ Tech Stack
 
-**Frontend**
-- React.js
-- CSS
+### Frontend
 
-**Backend**
-- Node.js
-- Express.js
+* React
+* React Router
+* Axios
+* CSS
 
-**Database**
-- MongoDB
+### Backend
 
-## 🚀 Getting Started
+* Node.js
+* Express.js
 
-### Clone the repository
+### Database
+
+* MongoDB
+* Mongoose
+
+### Other Tools
+
+* Socket.IO
+* JWT Authentication
+* Git & GitHub
+* Postman
+
+---
+
+## 📁 Project Structure
+
+```text
+bookify
+├── client
+├── server
+├── README.md
+└── .gitignore
+```
+
+---
+
+## 🚀 Installation
+
+Clone the repository
 
 ```bash
 git clone https://github.com/TombStone88/bookify.git
 ```
 
-### Navigate to the project
+Go to the project folder
 
 ```bash
 cd bookify
 ```
 
-### Install dependencies
+Install dependencies
+
+### Client
 
 ```bash
+cd client
 npm install
 ```
 
-### Start the application
+### Server
 
 ```bash
+cd ../server
+npm install
+```
+
+---
+
+## ⚙️ Environment Variables
+
+Create a `.env` file inside the **server** folder and add:
+
+```env
+PORT=5000
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_secret_key
+CLIENT_URL=http://localhost:3000
+```
+
+---
+
+## ▶️ Run the Project
+
+Start the backend
+
+```bash
+cd server
+npm run dev
+```
+
+Start the frontend
+
+```bash
+cd client
 npm start
 ```
 
-## 📸 Screenshots
+---
 
-### 🏠 Home Page
+## 📖 What I Learned
 
-![Home Page](screenshots/home-page.png)
+While building Bookify, I learned:
+
+* Building full-stack applications with the MERN stack
+* Creating REST APIs using Express.js
+* Working with MongoDB and Mongoose
+* Implementing JWT authentication
+* Using Socket.IO for real-time communication
+* Managing state and routing in React
+* Connecting frontend and backend applications
 
 ---
 
-### 🔑 Login Page
+## 🚀 Future Improvements
 
-![Login Page](screenshots/login-page.png)
-
----
-
-### 📝 Register Page
-
-![Register Page](screenshots/register-page.png)
-
----
-
-### 📊 Dashboard
-
-![Dashboard](screenshots/dashboard.png)
+* Book recommendation system
+* Wishlist feature
+* Better search and filters
+* Online/offline user status
+* Read receipts for chat
+* Improved notifications
+* Better profile customization
 
 ---
-
-### 📚 Book Management
-
-![Book Management](screenshots/book-management.png)
-
----
-
-### 👤 Profile Page
-
-![Profile](screenshots/profile-page.png)
-
----
-
-### 🏢 Club Dashboard
-
-![Club Dashboard](screenshots/club-dashboard.png)
-
-## 📂 Project Structure
-
-```
-bookify/
-│
-├── client/
-├── server/
-├── screenshots/
-│   ├── home-page.png
-│   ├── login-page.png
-│   ├── register-page.png
-│   ├── dashboard.png
-│   ├── book-management.png
-│   ├── profile-page.png
-│   └── club-dashboard.png
-│
-├── Requirements.txt
-└── README.md
-```
-
-## 🔮 Future Improvements
-
-- Book Recommendations
-- Dark Mode
-- Wishlist
-- Email Notifications
-- Admin Analytics
 
 ## 👨‍💻 Author
 
-**Dark Knight**
+**Nirav Mahida**
 
-GitHub: https://github.com/TombStone88
-
----
-
-⭐ If you like this project, consider giving it a star on GitHub!
+⭐ If you like this project, consider giving it a star!
