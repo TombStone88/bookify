@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api, { resolveFileUrl } from '../utils/api';
+import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import Navbar from '../components/Navbar';
@@ -538,7 +538,7 @@ function DiscoverClubsDrawer({ isOpen, onClose, onJoinedSuccess, myClubs }) {
 // ── MAIN CLUBS PAGE ────────────────────────────────────────
 export default function Clubs() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const userId = user?.userId;
 
   const [clubs, setClubs] = useState([]);
@@ -630,13 +630,6 @@ export default function Clubs() {
   const hostedCount = clubs.filter((c) => c.admin === userId).length;
   const activeTomesCount = clubs.filter((c) => c.currentBook !== null).length;
   const totalReadersCount = clubs.reduce((acc, c) => acc + (c.memberCount || 1), 0);
-
-  // Logout handler
-  const handleLogout = () => {
-    logout();
-    navigate('/', { replace: true });
-    toast.success('Logged out from Athenaeum');
-  };
 
   return (
     <div className="bg-surface font-body-md text-on-surface min-h-screen flex flex-col antialiased selection:bg-primary selection:text-on-primary">

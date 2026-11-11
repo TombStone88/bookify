@@ -141,7 +141,7 @@ function UploadModal({ onClose, onSuccess }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { logout, profile: authProfile } = useAuth();
+  const { profile: authProfile } = useAuth();
 
   const [books, setBooks] = useState([]);
   const [clubs, setClubs] = useState([]);
@@ -203,10 +203,6 @@ export default function Dashboard() {
   );
   const completedBooks = useMemo(
     () => books.filter((b) => b.progress >= 100),
-    [books]
-  );
-  const unreadBooks = useMemo(
-    () => books.filter((b) => !b.progress || b.progress === 0),
     [books]
   );
 

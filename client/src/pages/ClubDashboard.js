@@ -157,7 +157,7 @@ function UploadClubBookModal({ clubId, onClose, onSuccess }) {
 export default function ClubDashboard() {
   const { clubId } = useParams();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const userId = user?.userId;
 
   const messagesEndRef = useRef(null);
@@ -178,7 +178,6 @@ export default function ClubDashboard() {
   const [loading, setLoading] = useState(true);
   const [sendingMsg, setSendingMsg] = useState(false);
   const [profile, setProfile] = useState(null);
-  const [userDropdown, setUserDropdown] = useState(false);
   const [activeMobileTab, setActiveMobileTab] = useState('chat'); // 'chat' | 'tome' | 'members'
   const [allBooksOpen, setAllBooksOpen] = useState(false);
 
@@ -397,13 +396,6 @@ export default function ClubDashboard() {
     if (!inviteCode) return toast.error('Registry code not yet minted');
     navigator.clipboard.writeText(inviteCode);
     toast.success(`Registry invite code "${inviteCode}" copied to clipboard! 📋`);
-  };
-
-  // Logout handler
-  const handleLogout = () => {
-    logout();
-    navigate('/', { replace: true });
-    toast.success('Logged out from Athenaeum');
   };
 
   // Helpers to inspect message senders

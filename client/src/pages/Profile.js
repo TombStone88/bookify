@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api, { resolveFileUrl } from '../utils/api';
-import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -169,7 +168,6 @@ function formatMemberDate(dateStr) {
 export default function Profile() {
   const navigate = useNavigate();
   const { username: routeUsername } = useParams();
-  const { user: authUser, logout } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
@@ -181,7 +179,6 @@ export default function Profile() {
 
   // Modals & UI states
   const [showEditModal, setShowEditModal] = useState(false);
-  const [userDropdown, setUserDropdown] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Preference Form state
@@ -303,7 +300,6 @@ export default function Profile() {
     navigator.clipboard.writeText(url);
     toast.success('Public profile link copied to clipboard! 📋');
   };
-  const handleShareCodex = handleShareProfile;
 
   // Handle Toggle Genre Tag
   const toggleGenre = (genre) => {
