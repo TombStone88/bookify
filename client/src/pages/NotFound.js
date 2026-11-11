@@ -7,20 +7,22 @@ export default function NotFound() {
   const { token } = useAuth();
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f7f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', textAlign: 'center' }}>
-      <div>
-        <p style={{
-          fontSize: 'clamp(4rem, 12vw, 7rem)', fontWeight: 800, lineHeight: 1,
-          background: 'linear-gradient(135deg, #7c3aed, #a78bfa)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          marginBottom: 16,
-        }}>
+    <div className="min-h-screen bg-surface flex items-center justify-center p-4 selection:bg-primary selection:text-on-primary font-body-md text-on-surface text-center">
+      <div className="max-w-md w-full p-8 bg-surface-container-high border border-primary/30 rounded-2xl shadow-2xl relative animate-fadeIn flex flex-col items-center">
+        <p className="font-headline-lg font-garamond text-7xl font-bold text-primary mb-2 tracking-tight">
           404
         </p>
-        <h1 style={{ fontWeight: 700, fontSize: '1.3rem', color: '#1f2230', marginBottom: 8 }}>This page wandered off</h1>
-        <p style={{ color: '#8a8aa0', marginBottom: 28 }}>The page you're looking for doesn't exist, or has been moved.</p>
-        <button onClick={() => navigate(token ? '/dashboard' : '/')} className="btn-primary">
-          {token ? 'Back to Dashboard' : 'Back to Home'}
+        <h1 className="font-headline-md font-garamond text-2xl text-on-surface font-semibold mb-2">
+          This page wandered off
+        </h1>
+        <p className="text-outline text-xs leading-relaxed mb-6">
+          The page you're looking for doesn't exist, or has been moved to another shelf.
+        </p>
+        <button
+          onClick={() => navigate(token ? '/dashboard' : '/')}
+          className="px-5 py-2.5 bg-primary text-on-primary font-label-lg text-sm font-semibold rounded-lg shadow hover:bg-secondary transition-all cursor-pointer"
+        >
+          {token ? 'Back to Bookshelf' : 'Back to Home'}
         </button>
       </div>
     </div>

@@ -7,6 +7,12 @@ client/node_modules/
 server/.env
 client/.env
 client/.env.local
+.env
+.env.*
+!.env.example
+!.env.production
+
+client/.env.production
 
 # Build output
 client/build/
@@ -14,7 +20,15 @@ client/build/
 # Uploads (user files - store on cloud in production)
 server/uploads/*
 !server/uploads/.gitkeep
+!server/uploads/covers/
+server/uploads/covers/*
 !server/uploads/covers/.gitkeep
+!server/uploads/profile/
+server/uploads/profile/*
+!server/uploads/profile/.gitkeep
+!server/uploads/cache/
+server/uploads/cache/*
+!server/uploads/cache/.gitkeep
 
 # Logs
 *.log
@@ -23,3 +37,6 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Vercel
+.vercel/

@@ -5,8 +5,18 @@ services:
     rootDir: server
     buildCommand: npm install
     startCommand: node server.js
+    # Storage Architecture Note:
+    # Free-tier web services on Render utilize ephemeral container storage; local uploads
+    # do not survive service restarts or redeployments. To enable persistent file storage
+    # on Render without an external S3/Cloudinary bucket, attach a Render Persistent Disk:
+    # disk:
+    #   name: bookify-uploads
+    #   mountPath: /opt/render/project/src/server/uploads
+    #   sizeGB: 1
     envVars:
       - key: MONGO_URI
         sync: false
       - key: JWT_SECRET
+        sync: false
+      - key: CLIENT_URL
         sync: false

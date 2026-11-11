@@ -6,8 +6,6 @@ const router = express.Router();
 
 router.post("/register", async (req, res) => {
   try {
-    console.log("Incoming Body:", req.body);
-
     const { name, email, password } = req.body;
 
     const existingUser = await User.findOne({ email });
@@ -27,8 +25,8 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: error.message });
+    console.error("Registration error:", error.message);
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 
@@ -61,8 +59,8 @@ router.post("/login", async (req, res) => {
       token,
     });
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: error.message });
+    console.error("Login error:", error.message);
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 

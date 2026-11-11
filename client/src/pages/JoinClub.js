@@ -20,11 +20,11 @@ export default function JoinClub() {
       try {
         await api.post(`/api/clubs/join/${inviteCode}`, {});
         setStatus('success');
-        toast.success('Joined club successfully!');
+        toast.success('Joined book club successfully!');
         setTimeout(() => navigate('/clubs'), 1200);
       } catch (error) {
         setStatus('error');
-        toast.error(error.response?.data?.message || 'Failed to join club');
+        toast.error(error.response?.data?.message || 'Failed to join book club');
         setTimeout(() => navigate('/clubs'), 1800);
       }
     };
@@ -33,31 +33,46 @@ export default function JoinClub() {
   }, [inviteCode, token, navigate]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f7f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
-      <div className="glass-strong animate-scaleIn" style={{ borderRadius: 20, padding: '3rem 2.5rem', textAlign: 'center', maxWidth: 360 }}>
+    <div className="min-h-screen bg-surface flex items-center justify-center p-4 selection:bg-primary selection:text-on-primary font-body-md text-on-surface">
+      <div className="bg-surface-container-high border border-primary/30 rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl animate-fadeIn relative">
         {status === 'joining' && (
           <>
-            <div style={{ width: 48, height: 48, border: '3px solid #ece4ff', borderTop: '3px solid #7c3aed', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 20px' }} />
-            <h2 style={{ fontWeight: 700, color: '#1f2230', marginBottom: 8 }}>Joining club…</h2>
-            <p style={{ color: '#8a8aa0', fontSize: '0.875rem' }}>Hang tight, this won't take long.</p>
+            <div className="w-12 h-12 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-5" />
+            <h2 className="font-headline-md font-garamond text-2xl text-on-surface font-semibold mb-2">
+              Joining Book Club…
+            </h2>
+            <p className="text-outline text-xs leading-relaxed">
+              Connecting you with the discussion room.
+            </p>
           </>
         )}
         {status === 'success' && (
           <>
-            <div style={{ fontSize: '3rem', marginBottom: 16 }}>🎉</div>
-            <h2 style={{ fontWeight: 700, color: '#1f2230', marginBottom: 8 }}>You're in!</h2>
-            <p style={{ color: '#8a8aa0', fontSize: '0.875rem' }}>Redirecting to your clubs…</p>
+            <div className="w-12 h-12 rounded-full bg-surface-container-lowest border border-primary/30 flex items-center justify-center text-primary mx-auto mb-4 text-2xl">
+              <span className="material-symbols-outlined text-3xl text-primary">check_circle</span>
+            </div>
+            <h2 className="font-headline-md font-garamond text-2xl text-on-surface font-semibold mb-2">
+              You're in!
+            </h2>
+            <p className="text-outline text-xs leading-relaxed">
+              Redirecting to your book clubs…
+            </p>
           </>
         )}
         {status === 'error' && (
           <>
-            <div style={{ fontSize: '3rem', marginBottom: 16 }}>😕</div>
-            <h2 style={{ fontWeight: 700, color: '#1f2230', marginBottom: 8 }}>Couldn't join club</h2>
-            <p style={{ color: '#8a8aa0', fontSize: '0.875rem' }}>This invite code may be invalid. Redirecting…</p>
+            <div className="w-12 h-12 rounded-full bg-surface-container-lowest border border-error/30 flex items-center justify-center text-error mx-auto mb-4 text-2xl">
+              <span className="material-symbols-outlined text-3xl text-error">error</span>
+            </div>
+            <h2 className="font-headline-md font-garamond text-2xl text-on-surface font-semibold mb-2">
+              Couldn't join club
+            </h2>
+            <p className="text-outline text-xs leading-relaxed">
+              This invite code may be invalid or expired. Redirecting…
+            </p>
           </>
         )}
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

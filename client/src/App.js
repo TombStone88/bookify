@@ -23,13 +23,15 @@ function App() {
           position="top-right"
           toastOptions={{
             style: {
-              background: "#ffffff",
-              color: "#1f2230",
-              border: "1px solid #ececf3",
-              boxShadow: "0 8px 24px rgba(20,20,40,0.12)",
+              background: "#161b29",
+              color: "#dde2f5",
+              border: "1px solid rgba(242, 190, 140, 0.25)",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+              fontFamily: "Manrope, sans-serif",
+              fontSize: "14px",
             },
-            success: { iconTheme: { primary: "#22c55e", secondary: "#ffffff" } },
-            error:   { iconTheme: { primary: "#ef4444", secondary: "#ffffff" } },
+            success: { iconTheme: { primary: "#f2be8c", secondary: "#0d1320" } },
+            error:   { iconTheme: { primary: "#ffb4ab", secondary: "#0d1320" } },
           }}
         />
 
@@ -37,6 +39,7 @@ function App() {
           {/* ── Public routes ── */}
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/profile/:username" element={<Profile />} />
 
           {/* ── Protected routes ── */}
           <Route path="/dashboard" element={
