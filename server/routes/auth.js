@@ -110,7 +110,8 @@ router.post("/google", authRateLimiter, async (req, res) => {
       return res.status(400).json({ message: "Google ID token is required." });
     }
 
-    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const rawClientId = process.env.GOOGLE_CLIENT_ID;
+    const clientId = rawClientId ? rawClientId.trim() : null;
     if (!clientId) {
       console.error("GOOGLE_CLIENT_ID is not configured in server environment.");
       return res.status(500).json({

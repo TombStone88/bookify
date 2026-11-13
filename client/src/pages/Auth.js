@@ -57,10 +57,10 @@ export default function Auth() {
   const [magicLinkMsg, setMagicLinkMsg] = useState(false);
 
   const googleBtnContainerRef = useRef(null);
-  const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+  const googleClientId = (process.env.REACT_APP_GOOGLE_CLIENT_ID || '').trim();
   const isGoogleConfigured = Boolean(
     googleClientId &&
-      googleClientId.trim() !== '' &&
+      googleClientId !== '' &&
       !googleClientId.includes('placeholder') &&
       googleClientId !== 'bookify-google-client-id.apps.googleusercontent.com'
   );
@@ -245,18 +245,19 @@ export default function Auth() {
           <div className="flex flex-col gap-1 text-xs text-left">
             <span className="font-semibold text-amber-300">Google OAuth Setup Required</span>
             <span className="text-on-surface-variant">
-              Please set a valid <code className="bg-surface-container px-1 py-0.5 rounded text-amber-200">REACT_APP_GOOGLE_CLIENT_ID</code> in <code className="bg-surface-container px-1 py-0.5 rounded text-amber-200">client/.env</code>.
+              Please set a valid <code className="bg-surface-container px-1 py-0.5 rounded text-amber-200">REACT_APP_GOOGLE_CLIENT_ID</code> in your deployment environment variables (Vercel Project Settings) or <code className="bg-surface-container px-1 py-0.5 rounded text-amber-200">client/.env</code>.
             </span>
           </div>
         ),
         { icon: '⚙️', duration: 6000 }
       );
       console.warn(
-        '[Bookify Google Auth] Missing or placeholder REACT_APP_GOOGLE_CLIENT_ID in client/.env.\n' +
+        '[Bookify Google Auth] Missing or placeholder REACT_APP_GOOGLE_CLIENT_ID.\n' +
         'To enable Google Sign-In:\n' +
-        '1. Go to Google Cloud Console (https://console.cloud.google.com) > APIs & Services > Credentials.\n' +
-        '2. Create an OAuth 2.0 Web Client ID with Authorized JavaScript Origin: http://localhost:3000\n' +
-        '3. Add REACT_APP_GOOGLE_CLIENT_ID in client/.env and GOOGLE_CLIENT_ID in server/.env.'
+        '1. In Google Cloud Console (https://console.cloud.google.com) > APIs & Services > Credentials, create an OAuth 2.0 Web Client ID.\n' +
+        '2. Add Authorized JavaScript Origins: https://bookify-beta-rosy.vercel.app and http://localhost:3000\n' +
+        '3. Add REACT_APP_GOOGLE_CLIENT_ID in Vercel Environment Variables (and client/.env locally).\n' +
+        '4. Add GOOGLE_CLIENT_ID in server environment variables.'
       );
       return;
     }
@@ -490,7 +491,7 @@ export default function Auth() {
                   <div className="flex-1">
                     <span className="font-semibold text-amber-200">OAuth Setup Required: </span>
                     <span>
-                      Set <code className="bg-surface-container-lowest px-1 py-0.5 rounded text-amber-200 font-mono">REACT_APP_GOOGLE_CLIENT_ID</code> in <code className="bg-surface-container-lowest px-1 py-0.5 rounded text-amber-200 font-mono">client/.env</code> to authenticate with Google.
+                      Set <code className="bg-surface-container-lowest px-1 py-0.5 rounded text-amber-200 font-mono">REACT_APP_GOOGLE_CLIENT_ID</code> in environment variables (Vercel Project Settings or client/.env).
                     </span>
                   </div>
                 </div>
