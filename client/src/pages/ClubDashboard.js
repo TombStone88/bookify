@@ -7,6 +7,11 @@ import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import BookCover from '../components/BookCover';
+import ChallengesSection from '../components/clubs/ChallengesSection';
+import PollCard, { CreatePollModal } from '../components/clubs/PollCard';
+import DiscussionsSection from '../components/clubs/DiscussionsSection';
+import EventsSection from '../components/clubs/EventsSection';
+import ClubOverviewTab from '../components/clubs/ClubOverviewTab';
 
 // ── UPLOAD BOOK MODAL ──────────────────────────────────────
 function UploadClubBookModal({ clubId, onClose, onSuccess }) {
@@ -173,12 +178,15 @@ export default function ClubDashboard() {
   const [text, setText] = useState('');
   const [books, setBooks] = useState([]);
   const [members, setMembers] = useState([]);
+  const [polls, setPolls] = useState([]);
   const [adminId, setAdminId] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showCreatePollModal, setShowCreatePollModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sendingMsg, setSendingMsg] = useState(false);
   const [profile, setProfile] = useState(null);
   const [activeMobileTab, setActiveMobileTab] = useState('chat'); // 'chat' | 'tome' | 'members'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'challenges' | 'discussions' | 'events' | 'chat'
   const [allBooksOpen, setAllBooksOpen] = useState(false);
 
   // Fetch current user details for Athenaeum header
@@ -212,18 +220,20 @@ export default function ClubDashboard() {
     isNearBottomRef.current = distanceFromBottom <= threshold;
   }, []);
 
-  // Fetch Club, Messages, Books, and Members
+  // Fetch Club, Messages, Books, Members, and Polls
   const fetchAll = useCallback(async () => {
     try {
-      const [msgRes, bookRes, memberRes] = await Promise.all([
+      const [msgRes, bookRes, memberRes, pollRes] = await Promise.all([
         api.get(`/api/messages/${clubId}`).catch(() => ({ data: [] })),
         api.get(`/api/books/${clubId}`).catch(() => ({ data: [] })),
         api.get(`/api/clubs/members/${clubId}`).catch(() => ({ data: { members: [] } })),
+        api.get(`/api/polls/club/${clubId}`).catch(() => ({ data: [] })),
       ]);
 
       setMessages(msgRes.data || []);
       setBooks(bookRes.data || []);
       setMembers(memberRes.data?.members || []);
+      setPolls(pollRes.data || []);
       setAdminId(memberRes.data?.admin || null);
       setInviteCode(memberRes.data?.inviteCode || '');
       setClub({
@@ -231,11 +241,26 @@ export default function ClubDashboard() {
         description: memberRes.data?.description,
       });
     } catch {
-      toast.error('Failed to load salon chamber data');
+      toast.error('Failed to load club discussion data');
     } finally {
       setLoading(false);
     }
   }, [clubId]);
+
+  // Combined stream: messages and polls sorted chronologically
+  const chatItems = useMemo(() => {
+    const msgItems = messages.map((m) => ({
+      ...m,
+      isPoll: false,
+      sortTime: new Date(m.createdAt || 0).getTime(),
+    }));
+    const pollItems = polls.map((p) => ({
+      ...p,
+      isPoll: true,
+      sortTime: new Date(p.createdAt || 0).getTime(),
+    }));
+    return [...msgItems, ...pollItems].sort((a, b) => a.sortTime - b.sortTime);
+  }, [messages, polls]);
 
   // Socket.IO Room Joining and Real-time Listeners
   useEffect(() => {
@@ -244,7 +269,7 @@ export default function ClubDashboard() {
     // Join the dedicated club room
     socket.emit('joinClub', clubId);
 
-    // Listen for incoming messages from fellow readers
+    // Listen for incoming messages from fellow members
     const handleReceiveMessage = (msg) => {
       setMessages((prev) => {
         if (prev.find((m) => m._id === msg._id)) return prev;
@@ -252,10 +277,34 @@ export default function ClubDashboard() {
       });
     };
 
+    // Listen for real-time poll events
+    const handleNewPoll = (newPoll) => {
+      setPolls((prev) => {
+        if (prev.find((p) => p._id === newPoll._id)) return prev;
+        return [...prev, newPoll];
+      });
+    };
+
+    const handlePollUpdated = (updated) => {
+      const pDoc = updated?.poll || updated;
+      if (!pDoc?._id) return;
+      setPolls((prev) => prev.map((p) => (p._id === pDoc._id ? pDoc : p)));
+    };
+
+    const handlePollDeleted = (deletedPollId) => {
+      setPolls((prev) => prev.filter((p) => p._id !== deletedPollId));
+    };
+
     socket.on('receiveMessage', handleReceiveMessage);
+    socket.on('newPoll', handleNewPoll);
+    socket.on('pollUpdated', handlePollUpdated);
+    socket.on('pollDeleted', handlePollDeleted);
 
     return () => {
       socket.off('receiveMessage', handleReceiveMessage);
+      socket.off('newPoll', handleNewPoll);
+      socket.off('pollUpdated', handlePollUpdated);
+      socket.off('pollDeleted', handlePollDeleted);
     };
   }, [clubId, fetchAll]);
 
@@ -265,11 +314,11 @@ export default function ClubDashboard() {
     if (!container) return;
 
     const clubChanged = prevClubIdRef.current !== clubId;
-    const isInitialLoad = prevMessagesLengthRef.current === 0 && messages.length > 0;
+    const isInitialLoad = prevMessagesLengthRef.current === 0 && chatItems.length > 0;
 
     if (clubChanged) {
       prevClubIdRef.current = clubId;
-      prevMessagesLengthRef.current = messages.length;
+      prevMessagesLengthRef.current = chatItems.length;
       isNearBottomRef.current = true;
       // Instant internal scroll on club change - keeps page position untouched
       container.scrollTop = container.scrollHeight;
@@ -277,23 +326,23 @@ export default function ClubDashboard() {
     }
 
     if (isInitialLoad) {
-      prevMessagesLengthRef.current = messages.length;
+      prevMessagesLengthRef.current = chatItems.length;
       isNearBottomRef.current = true;
       // Instant internal scroll when messages are initially loaded - keeps page position untouched
       container.scrollTop = container.scrollHeight;
       return;
     }
 
-    prevMessagesLengthRef.current = messages.length;
+    prevMessagesLengthRef.current = chatItems.length;
 
-    // For new incoming/sent messages: only scroll container if user was already at bottom
+    // For new incoming/sent items: only scroll container if user was already at bottom
     if (isNearBottomRef.current) {
       container.scrollTo({
         top: container.scrollHeight,
         behavior: 'smooth',
       });
     }
-  }, [messages, clubId]);
+  }, [chatItems, clubId]);
 
   // Keep messages container at bottom when switching back to chat tab on mobile
   useEffect(() => {
@@ -316,7 +365,7 @@ export default function ClubDashboard() {
       // Update local message stream immediately
       setMessages((prev) => [...prev, newMsg]);
 
-      // Broadcast to other salon attendees via Socket.IO
+      // Broadcast to other club members via Socket.IO
       socket.emit('sendMessage', newMsg);
 
       // User sent their own message: ensure container scrolls to bottom
@@ -328,7 +377,7 @@ export default function ClubDashboard() {
         textareaRef.current.focus({ preventScroll: true });
       }
     } catch {
-      toast.error('Failed to dispatch reflection');
+      toast.error('Failed to send message');
     } finally {
       setSendingMsg(false);
     }
@@ -344,22 +393,22 @@ export default function ClubDashboard() {
 
   // Quick insertion helpers for literary discourse
   const insertQuoteTemplate = () => {
-    setText((prev) => (prev ? `${prev}\n“...” — Folio / Page ` : '“...” — Folio / Page '));
+    setText((prev) => (prev ? `${prev}\n“...” — Page ` : '“...” — Page '));
     textareaRef.current?.focus({ preventScroll: true });
   };
 
   const insertPageRef = () => {
-    setText((prev) => (prev ? `${prev} [Folio p. ] ` : '[Folio p. ] '));
+    setText((prev) => (prev ? `${prev} [p. ] ` : '[p. ] '));
     textareaRef.current?.focus({ preventScroll: true });
   };
 
   // Administrator Action: Remove Member
   const handleRemoveMember = async (memberId, memberName) => {
-    if (!window.confirm(`Remove reader "${memberName}" from this salon circle?`)) return;
+    if (!window.confirm(`Remove member "${memberName}" from this book club?`)) return;
     try {
       await api.delete(`/api/clubs/remove-member/${clubId}/${memberId}`);
       setMembers((prev) => prev.filter((m) => m._id !== memberId));
-      toast.success(`Removed "${memberName}" from salon`);
+      toast.success(`Removed "${memberName}" from club`);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to remove member');
     }
@@ -367,35 +416,35 @@ export default function ClubDashboard() {
 
   // Administrator Action: Delete Club
   const handleDeleteClub = async () => {
-    if (!window.confirm('Dissolve this entire reading circle? All chapter archives will be removed. This cannot be undone.')) {
+    if (!window.confirm('Delete this book club? All messages and activities will be removed. This cannot be undone.')) {
       return;
     }
     try {
       await api.delete(`/api/clubs/delete/${clubId}`);
-      toast.success('Reading circle dissolved');
+      toast.success('Book club deleted');
       navigate('/clubs');
     } catch {
-      toast.error('Failed to dissolve circle');
+      toast.error('Failed to delete book club');
     }
   };
 
   // Member Action: Leave Club
   const handleLeaveClub = async () => {
-    if (!window.confirm('Depart from this reading circle?')) return;
+    if (!window.confirm('Leave this book club?')) return;
     try {
       await api.delete(`/api/clubs/leave/${clubId}`);
-      toast.success('Departed from reading circle');
+      toast.success('Left the book club');
       navigate('/clubs');
     } catch {
-      toast.error('Failed to leave circle');
+      toast.error('Failed to leave book club');
     }
   };
 
   // Copy Registry Invite Code
   const copyInviteCode = () => {
-    if (!inviteCode) return toast.error('Registry code not yet minted');
+    if (!inviteCode) return toast.error('Invite code not available yet');
     navigator.clipboard.writeText(inviteCode);
-    toast.success(`Registry invite code "${inviteCode}" copied to clipboard! 📋`);
+    toast.success(`Invite code "${inviteCode}" copied to clipboard! 📋`);
   };
 
   // Helpers to inspect message senders
@@ -429,6 +478,8 @@ export default function ClubDashboard() {
     if (adminId === userId) return 'You (Club Host)';
     return curator ? (curator.name || curator.username) : 'Club Host';
   }, [adminId, userId, curator]);
+
+  const isHost = Boolean(adminId && userId && adminId.toString() === userId.toString());
 
   // Current active book is the most recent book uploaded to the club
   const activeBook = useMemo(() => {
@@ -507,7 +558,7 @@ export default function ClubDashboard() {
             <span className="text-outline/40">/</span>
             <span className="text-primary font-semibold flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block animate-pulse" />
-              <span>Discussion Room</span>
+              <span className="capitalize">{activeTab === 'chat' ? 'Live Chat' : activeTab}</span>
             </span>
           </nav>
 
@@ -622,8 +673,95 @@ export default function ClubDashboard() {
             </div>
           </header>
 
-          {/* ── MOBILE SECTION TABS (Shown only on small screens) ── */}
-          <div className="flex lg:hidden items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-outline-variant/20">
+          {/* ── CLUB NAVIGATION TABS BAR ────────────────────────── */}
+          <div className="w-full bg-surface-container-low rounded-2xl p-1.5 sm:p-2 border border-outline-variant/20 shadow-md flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none">
+            {[
+              { id: 'overview', label: 'Overview', icon: 'dashboard' },
+              { id: 'challenges', label: 'Challenges', icon: 'flag' },
+              { id: 'discussions', label: 'Discussions', icon: 'forum' },
+              { id: 'events', label: 'Events', icon: 'calendar_month' },
+              { id: 'chat', label: 'Live Chat', icon: 'chat', live: true },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3.5 py-2 rounded-xl font-label-sm text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                  activeTab === tab.id
+                    ? 'bg-primary text-on-primary shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[17px]">{tab.icon}</span>
+                <span>{tab.label}</span>
+                {tab.live && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* ── TAB CONTENT: OVERVIEW ────────────────────────────── */}
+          {activeTab === 'overview' && (
+            <ClubOverviewTab
+              clubId={clubId}
+              isHost={isHost}
+              userId={userId}
+              adminId={adminId}
+              club={club}
+              books={books}
+              members={members}
+              inviteCode={inviteCode}
+              copyInviteCode={copyInviteCode}
+              setShowUploadModal={setShowUploadModal}
+              handleRemoveMember={handleRemoveMember}
+              onNavigateTab={(tab) => {
+                if (tab === 'tome') {
+                  setActiveTab('chat');
+                  setActiveMobileTab('tome');
+                } else if (tab === 'members') {
+                  setActiveTab('chat');
+                  setActiveMobileTab('members');
+                } else if (tab === 'polls') {
+                  setActiveTab('chat');
+                } else {
+                  setActiveTab(tab);
+                }
+              }}
+            />
+          )}
+
+          {/* ── TAB CONTENT: CHALLENGES ─────────────────────────── */}
+          {activeTab === 'challenges' && (
+            <ChallengesSection
+              clubId={clubId}
+              isHost={isHost}
+              currentUserId={userId}
+            />
+          )}
+
+          {/* ── TAB CONTENT: DISCUSSIONS ────────────────────────── */}
+          {activeTab === 'discussions' && (
+            <DiscussionsSection
+              clubId={clubId}
+              isHost={isHost}
+              currentUserId={userId}
+            />
+          )}
+
+          {/* ── TAB CONTENT: EVENTS ─────────────────────────────── */}
+          {activeTab === 'events' && (
+            <EventsSection
+              clubId={clubId}
+              isHost={isHost}
+              currentUserId={userId}
+            />
+          )}
+
+          {/* ── TAB CONTENT: LIVE CHAT (ORIGINAL DISCUSSION ROOM) ── */}
+          {activeTab === 'chat' && (
+            <>
+              {/* ── MOBILE SECTION TABS (Shown only on small screens) ── */}
+              <div className="flex lg:hidden items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-outline-variant/20">
             <button
               onClick={() => setActiveMobileTab('chat')}
               className={`flex-1 py-1.5 rounded-lg font-label-sm text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
@@ -741,8 +879,8 @@ export default function ClubDashboard() {
                     </div>
                   </div>
 
-                  {messages.length === 0 ? (
-                    /* Empty State: No messages yet */
+                  {chatItems.length === 0 ? (
+                    /* Empty State: No messages or polls yet */
                     <div className="h-full flex flex-col items-center justify-center text-center p-6 text-outline">
                       <div className="w-14 h-14 rounded-2xl bg-surface-container border border-primary/20 flex items-center justify-center text-primary mb-3 shadow-inner">
                         <span className="material-symbols-outlined text-2xl">edit_note</span>
@@ -751,21 +889,54 @@ export default function ClubDashboard() {
                         No messages in this discussion yet
                       </h3>
                       <p className="font-body-sm text-xs text-outline max-w-sm leading-relaxed mb-4">
-                        No messages have been shared in this club yet. Be the first reader to share a thought or cite a passage.
+                        No messages or polls have been shared in this club yet. Be the first reader to share a thought, cite a passage, or create a poll.
                       </p>
-                      <button
-                        onClick={insertQuoteTemplate}
-                        className="px-3.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-xs font-semibold border border-primary/20 transition-all cursor-pointer flex items-center gap-1.5"
-                      >
-                        <span className="material-symbols-outlined text-sm">format_quote</span>
-                        <span>Start with a Passage Quote</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={insertQuoteTemplate}
+                          className="px-3.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-label-sm text-xs font-semibold border border-primary/20 transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span className="material-symbols-outlined text-sm">format_quote</span>
+                          <span>Start with a Passage Quote</span>
+                        </button>
+                        {isHost && (
+                          <button
+                            onClick={() => setShowCreatePollModal(true)}
+                            className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-secondary text-on-primary font-label-sm text-xs font-semibold shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                          >
+                            <span className="material-symbols-outlined text-sm">how_to_vote</span>
+                            <span>Create Poll</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ) : (
-                    /* Real Message Stream */
-                    messages.map((msg, i) => {
+                    /* Real Message & Poll Stream */
+                    chatItems.map((item, i) => {
+                      if (item.isPoll) {
+                        return (
+                          <div key={item._id || `poll-${i}`} className="my-2">
+                            <PollCard
+                              poll={item}
+                              clubId={clubId}
+                              isHost={isHost}
+                              currentUserId={userId}
+                              onPollUpdated={(updatedPoll) => {
+                                setPolls((prev) =>
+                                  prev.map((p) => (p._id === updatedPoll._id ? updatedPoll : p))
+                                );
+                              }}
+                              onPollDeleted={(deletedId) => {
+                                setPolls((prev) => prev.filter((p) => p._id !== deletedId));
+                              }}
+                            />
+                          </div>
+                        );
+                      }
+
+                      const msg = item;
                       const mine = isMe(msg);
-                      const isHost = isHostMsg(msg);
+                      const isHostSender = isHostMsg(msg);
                       const senderName = getSenderName(msg);
                       const senderInitial = senderName.charAt(0).toUpperCase();
 
@@ -782,14 +953,14 @@ export default function ClubDashboard() {
                               className={`w-9 h-9 rounded-xl flex items-center justify-center font-garamond text-sm font-bold shadow-sm ${
                                 mine
                                   ? 'bg-primary-container text-on-primary-container border border-primary/30'
-                                  : isHost
+                                  : isHostSender
                                   ? 'bg-secondary-container text-on-secondary-container border border-secondary/40'
                                   : 'bg-surface-container-high text-on-surface border border-outline-variant/30'
                               }`}
                             >
                               {senderInitial}
                             </div>
-                            {isHost && (
+                            {isHostSender && (
                               <span
                                 className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-secondary text-on-secondary rounded-full flex items-center justify-center shadow"
                                 title="Club Host"
@@ -815,7 +986,7 @@ export default function ClubDashboard() {
                                 className={`font-label-lg font-semibold ${
                                   mine
                                     ? 'text-primary'
-                                    : isHost
+                                    : isHostSender
                                     ? 'text-secondary font-bold'
                                     : 'text-on-surface'
                                 }`}
@@ -823,7 +994,7 @@ export default function ClubDashboard() {
                                 {mine ? `${senderName} (You)` : senderName}
                               </span>
 
-                              {isHost && !mine && (
+                              {isHostSender && !mine && (
                                 <span className="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container font-label-sm text-[9px] uppercase tracking-wider font-bold">
                                   Host
                                 </span>
@@ -839,7 +1010,7 @@ export default function ClubDashboard() {
                               className={`rounded-2xl px-4 py-2.5 text-xs sm:text-sm leading-relaxed shadow-sm break-words whitespace-pre-wrap ${
                                 mine
                                   ? 'bg-primary/15 border border-primary/30 text-on-surface rounded-tr-sm'
-                                  : isHost
+                                  : isHostSender
                                   ? 'bg-surface-container-high border border-secondary/25 text-on-surface rounded-tl-sm'
                                   : 'bg-surface-container border border-outline-variant/20 text-on-surface rounded-tl-sm'
                               }`}
@@ -885,6 +1056,18 @@ export default function ClubDashboard() {
                         auto_stories
                       </span>
                       <span>Page Ref</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowCreatePollModal(true)}
+                      className="px-2 py-1 rounded hover:bg-surface-container text-outline hover:text-primary transition-colors flex items-center gap-1 font-label-sm text-[11px] cursor-pointer"
+                      title="Create a club poll"
+                    >
+                      <span className="material-symbols-outlined text-[15px] text-primary">
+                        how_to_vote
+                      </span>
+                      <span>Create Poll</span>
                     </button>
                   </div>
 
@@ -1185,6 +1368,8 @@ export default function ClubDashboard() {
 
             </aside>
           </div>
+            </>
+          )}
 
         </div>
       </main>
@@ -1197,6 +1382,25 @@ export default function ClubDashboard() {
           onSuccess={() => {
             setShowUploadModal(false);
             fetchAll();
+          }}
+        />
+      )}
+
+      {/* ── CREATE POLL MODAL ─────────────────────────────────── */}
+      {showCreatePollModal && (
+        <CreatePollModal
+          clubId={clubId}
+          onClose={() => setShowCreatePollModal(false)}
+          onSuccess={(newPoll) => {
+            setShowCreatePollModal(false);
+            if (newPoll) {
+              setPolls((prev) => {
+                if (prev.find((p) => p._id === newPoll._id)) return prev;
+                return [...prev, newPoll];
+              });
+              isNearBottomRef.current = true;
+              scrollToBottom('smooth');
+            }
           }}
         />
       )}

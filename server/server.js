@@ -48,6 +48,10 @@ const bookRoutes = require("./routes/book");
 const messageRoutes = require("./routes/message");
 const notificationRoutes = require("./routes/notification");
 const imageRoutes = require("./routes/imageRoutes");
+const challengeRoutes = require("./routes/challengeRoutes");
+const pollRoutes = require("./routes/pollRoutes");
+const topicRoutes = require("./routes/topicRoutes");
+const eventRoutes = require("./routes/eventRoutes");
 
 const app = express();
 const server = http.createServer(app);
@@ -234,6 +238,10 @@ app.use("/api/books", bookRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/images", imageRoutes);
+app.use("/api/challenges", challengeRoutes);
+app.use("/api/polls", pollRoutes);
+app.use("/api/topics", topicRoutes);
+app.use("/api/events", eventRoutes);
 
 app.get("/api/protected", authMiddleware, (req, res) => {
   res.json({ message: "Protected route 🔐", user: req.user });

@@ -6,6 +6,13 @@ const clubSchema = new mongoose.Schema({
 
   description: String,
 
+  category: {
+    type: String,
+    default: "general",
+    trim: true,
+    lowercase: true,
+  },
+
   inviteCode: String,
 
   admin: {

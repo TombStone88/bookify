@@ -9,6 +9,10 @@ const Book = require("../models/Book");
 const Message = require("../models/Message");
 const ReadingProgress = require("../models/ReadingProgress");
 const User = require("../models/User");
+const Challenge = require("../models/Challenge");
+const Poll = require("../models/Poll");
+const DiscussionTopic = require("../models/DiscussionTopic");
+const ClubEvent = require("../models/ClubEvent");
 const authMiddleware = require("../middleware/authMiddleware");
 const { sendNotification } = require("../utils/notify");
 
@@ -21,10 +25,14 @@ const generateInviteCode = () => {
 router.post("/create", authMiddleware, async (req, res) => {
   try {
     const inviteCode = Math.random().toString(36).substring(2, 8);
+    const category = req.body.category
+      ? String(req.body.category).trim().toLowerCase()
+      : "general";
 
     const club = new Club({
       name: req.body.name,
       description: req.body.description,
+      category,
       inviteCode,
       admin: req.user.userId, // REQUIRED
       members: [req.user.userId],
@@ -109,6 +117,12 @@ router.delete("/delete/:clubId", authMiddleware, async (req, res) => {
 
     // Delete all messages belonging to this club
     await Message.deleteMany({ clubId: club._id });
+
+    // Clean up all challenges, polls, discussions & events for this club
+    await Challenge.deleteMany({ club: club._id });
+    await Poll.deleteMany({ club: club._id });
+    await DiscussionTopic.deleteMany({ club: club._id });
+    await ClubEvent.deleteMany({ club: club._id });
 
     await club.deleteOne();
 
@@ -275,6 +289,7 @@ router.get("/my-clubs", authMiddleware, async (req, res) => {
       const clubObj = club.toObject();
       return {
         ...clubObj,
+        category: club.category || "general",
         currentBook,
         books: clubBooks,
         curatorName,
@@ -284,6 +299,53 @@ router.get("/my-clubs", authMiddleware, async (req, res) => {
     });
 
     res.json(enrichedClubs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Club Directory - returns all Athenaeum circles for discovery with category, curator, and member count
+router.get("/directory", authMiddleware, async (req, res) => {
+  try {
+    const clubs = await Club.find().populate("admin", "name username");
+    const clubIds = clubs.map((c) => c._id);
+
+    const allBooks = await Book.find({ clubId: { $in: clubIds } }).sort({ createdAt: 1 });
+    const booksByClub = new Map();
+    for (const b of allBooks) {
+      const cId = b.clubId.toString();
+      if (!booksByClub.has(cId)) booksByClub.set(cId, []);
+      booksByClub.get(cId).push(b);
+    }
+
+    const directoryClubs = clubs.map((club) => {
+      const cId = club._id.toString();
+      const clubBooks = booksByClub.get(cId) || [];
+      const currentBook = clubBooks.length > 0 ? clubBooks[clubBooks.length - 1] : null;
+      const adminUser = club.admin;
+      const curatorName = adminUser
+        ? adminUser._id?.toString() === req.user.userId.toString()
+          ? "You"
+          : adminUser.name || adminUser.username || "Club Host"
+        : "Club Host";
+
+      const isMember = (club.members || []).some(
+        (m) => m && m.toString() === req.user.userId.toString()
+      );
+
+      const clubObj = club.toObject();
+      return {
+        ...clubObj,
+        category: club.category || "general",
+        currentBook,
+        books: clubBooks,
+        curatorName,
+        memberCount: club.members ? club.members.length : 1,
+        isJoined: isMember,
+      };
+    });
+
+    res.json(directoryClubs);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

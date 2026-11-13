@@ -14,6 +14,17 @@ const authMiddleware = require("../middleware/authMiddleware");
 const { validateFile } = require("../utils/fileValidation");
 const { processProfileImage } = require("../utils/imageOptimizer");
 
+const VALID_MOODS = [
+  "📖 Reading",
+  "💬 Available to chat",
+  "🎧 Busy",
+  "✨ Taking a break",
+  "☕ Coffee time",
+  "🧠 Deep focus",
+];
+
+const VALID_AVAILABILITIES = ["Online", "Away", "Do Not Disturb", "Offline"];
+
 // ── Optional Auth Middleware for Public Views ───────────────
 const optionalAuth = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -89,7 +100,7 @@ function computeReadingActivity(books) {
 
   const quarters = [
     { label: "Q1 • Vellum Days", count: monthlyActivity.slice(0, 3).reduce((acc, c) => acc + c.completed, 0), months: "Jan - Mar" },
-    { label: "Q2 • Salon Solstice", count: monthlyActivity.slice(3, 6).reduce((acc, c) => acc + c.completed, 0), months: "Apr - Jun" },
+    { label: "Q2 • Summer Solstice", count: monthlyActivity.slice(3, 6).reduce((acc, c) => acc + c.completed, 0), months: "Apr - Jun" },
     { label: "Q3 • Autumn Harvest", count: monthlyActivity.slice(6, 9).reduce((acc, c) => acc + c.completed, 0), months: "Jul - Sep" },
     { label: "Q4 • Winter Vigils", count: monthlyActivity.slice(9, 12).reduce((acc, c) => acc + c.completed, 0), months: "Oct - Dec" },
   ];
@@ -200,10 +211,10 @@ router.put("/username", authMiddleware, async (req, res) => {
   }
 });
 
-// ── 3. UPDATE PROFILE (Bio, Genres, Interests, Favs) ───────
+// ── 3. UPDATE PROFILE (Bio, Genres, Interests, Favs, Status) ───────
 router.put("/profile", authMiddleware, async (req, res) => {
   try {
-    const { username, bio, favoriteGenres, readingInterests, favoriteBooks } = req.body;
+    const { username, bio, favoriteGenres, readingInterests, favoriteBooks, mood, customStatus, availability } = req.body;
 
     const updates = {};
     if (username !== undefined) {
@@ -224,6 +235,29 @@ router.put("/profile", authMiddleware, async (req, res) => {
     if (bio !== undefined) updates.bio = bio.trim().slice(0, 500);
     if (favoriteGenres !== undefined) updates.favoriteGenres = favoriteGenres;
     if (readingInterests !== undefined) updates.readingInterests = readingInterests;
+
+    if (mood !== undefined) {
+      if (!VALID_MOODS.includes(mood)) {
+        return res.status(400).json({ error: "Invalid mood option." });
+      }
+      updates.mood = mood;
+    }
+
+    if (customStatus !== undefined) {
+      const trimmed = (customStatus || "").toString().trim();
+      if (trimmed.length > 100) {
+        return res.status(400).json({ error: "Custom status must not exceed 100 characters." });
+      }
+      updates.customStatus = trimmed;
+    }
+
+    if (availability !== undefined) {
+      if (!VALID_AVAILABILITIES.includes(availability)) {
+        return res.status(400).json({ error: "Invalid availability status." });
+      }
+      updates.availability = availability;
+    }
+
     if (favoriteBooks !== undefined) {
       if (!Array.isArray(favoriteBooks)) {
         return res.status(400).json({ error: "favoriteBooks must be an array of book IDs." });
@@ -272,6 +306,61 @@ router.put("/profile", authMiddleware, async (req, res) => {
     }
 
     res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── 3B. UPDATE STATUS (Mood, Custom Status, Availability) ────
+router.put("/status", authMiddleware, async (req, res) => {
+  try {
+    const { mood, customStatus, availability } = req.body;
+    const updates = {};
+
+    if (mood !== undefined) {
+      if (!VALID_MOODS.includes(mood)) {
+        return res.status(400).json({ error: "Invalid mood option." });
+      }
+      updates.mood = mood;
+    }
+
+    if (customStatus !== undefined) {
+      const trimmed = (customStatus || "").toString().trim();
+      if (trimmed.length > 100) {
+        return res.status(400).json({ error: "Custom status must not exceed 100 characters." });
+      }
+      updates.customStatus = trimmed;
+    }
+
+    if (availability !== undefined) {
+      if (!VALID_AVAILABILITIES.includes(availability)) {
+        return res.status(400).json({ error: "Invalid availability status." });
+      }
+      updates.availability = availability;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      updates,
+      { new: true }
+    ).select("-password").populate("favoriteBooks");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      message: "Status updated successfully",
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        profileImage: user.profileImage,
+        mood: user.mood || "📖 Reading",
+        customStatus: user.customStatus || "",
+        availability: user.availability || "Online",
+      },
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -377,6 +466,9 @@ router.get("/me", authMiddleware, async (req, res) => {
         email: user.email,
         profileImage: user.profileImage,
         bio: user.bio || "",
+        mood: user.mood || "📖 Reading",
+        customStatus: user.customStatus || "",
+        availability: user.availability || "Online",
         favoriteGenres: user.favoriteGenres || [],
         readingInterests: user.readingInterests || [],
         favoriteBooks: userFavoriteBooks,
@@ -442,6 +534,9 @@ router.get("/public/:username", optionalAuth, async (req, res) => {
           username: user.username,
           profileImage: user.profileImage,
           bio: "",
+          mood: user.mood || "📖 Reading",
+          customStatus: user.customStatus || "",
+          availability: user.availability || "Online",
           createdAt: user.createdAt || user._id.getTimestamp(),
         },
       });
@@ -485,6 +580,9 @@ router.get("/public/:username", optionalAuth, async (req, res) => {
         username: user.username,
         profileImage: user.profileImage,
         bio: user.bio || "",
+        mood: user.mood || "📖 Reading",
+        customStatus: user.customStatus || "",
+        availability: user.availability || "Online",
         favoriteGenres: user.favoriteGenres || [],
         readingInterests: user.readingInterests || [],
         createdAt: user.createdAt || user._id.getTimestamp(),

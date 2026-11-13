@@ -1,11 +1,28 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api, { resolveFileUrl } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import BookCover from '../components/BookCover';
 import UserAvatar from '../components/UserAvatar';
+
+const MOOD_OPTIONS = [
+  '📖 Reading',
+  '💬 Available to chat',
+  '🎧 Busy',
+  '✨ Taking a break',
+  '☕ Coffee time',
+  '🧠 Deep focus',
+];
+
+const AVAILABILITY_CONFIG = {
+  Online: { label: 'Online', dot: 'bg-emerald-500', text: 'text-emerald-400' },
+  Away: { label: 'Away', dot: 'bg-amber-500', text: 'text-amber-400' },
+  'Do Not Disturb': { label: 'Do Not Disturb', dot: 'bg-rose-500', text: 'text-rose-400' },
+  Offline: { label: 'Offline', dot: 'bg-slate-500', text: 'text-slate-400' },
+};
 
 // ── AVAILABLE GENRES & INTERESTS FOR PREFERENCES ────────────
 const DEFAULT_GENRES = [
@@ -36,6 +53,9 @@ const DEFAULT_INTERESTS = [
 function EditProfileModal({ user, onClose, onUpdate }) {
   const [username, setUsername] = useState(user.username || '');
   const [bio, setBio] = useState(user.bio || '');
+  const [mood, setMood] = useState(user.mood || '📖 Reading');
+  const [customStatus, setCustomStatus] = useState(user.customStatus || '');
+  const [availability, setAvailability] = useState(user.availability || 'Online');
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -48,6 +68,9 @@ function EditProfileModal({ user, onClose, onUpdate }) {
       const res = await api.put('/api/users/profile', {
         username: username.trim(),
         bio: bio.trim(),
+        mood,
+        customStatus: customStatus.trim().slice(0, 100),
+        availability,
       });
       toast.success('Profile updated successfully! 📜');
       onUpdate(res.data);
@@ -65,7 +88,7 @@ function EditProfileModal({ user, onClose, onUpdate }) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-surface-container-high border border-primary/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative"
+        className="w-full max-w-lg bg-surface-container-high border border-primary/30 rounded-2xl p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5 border-b border-outline-variant/20 pb-4">
@@ -78,7 +101,7 @@ function EditProfileModal({ user, onClose, onUpdate }) {
                 Edit Profile
               </h2>
               <p className="font-body-sm text-xs text-outline">
-                Update your bio and reader identity.
+                Update your bio, mood, and reader identity.
               </p>
             </div>
           </div>
@@ -108,6 +131,70 @@ function EditProfileModal({ user, onClose, onUpdate }) {
             </div>
           </div>
 
+          {/* Availability Selector */}
+          <div>
+            <label className="block font-label-sm text-[11px] uppercase tracking-wider text-on-surface-variant mb-1.5">
+              Online Availability
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {['Online', 'Away', 'Do Not Disturb', 'Offline'].map((avail) => {
+                const cfg = AVAILABILITY_CONFIG[avail];
+                const isSelected = availability === avail;
+                return (
+                  <button
+                    key={avail}
+                    type="button"
+                    onClick={() => setAvailability(avail)}
+                    className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg border text-xs font-label-sm transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-surface-container border-primary text-on-surface font-semibold shadow-xs'
+                        : 'bg-surface-container-lowest border-outline-variant/30 text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                    <span>{avail}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Mood Selector */}
+          <div>
+            <label className="block font-label-sm text-[11px] uppercase tracking-wider text-on-surface-variant mb-1.5">
+              Current Mood
+            </label>
+            <select
+              value={mood}
+              onChange={(e) => setMood(e.target.value)}
+              className="w-full bg-surface-container-lowest border border-outline-variant/30 text-on-surface font-body-sm text-sm px-3.5 py-2.5 rounded-lg focus:outline-none focus:border-primary shadow-inner cursor-pointer"
+            >
+              {MOOD_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Custom Status Message */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="font-label-sm text-[11px] uppercase tracking-wider text-on-surface-variant">
+                Custom Status (Optional)
+              </label>
+              <span className="text-[11px] text-outline font-mono">{customStatus.length} / 100</span>
+            </div>
+            <input
+              type="text"
+              value={customStatus}
+              onChange={(e) => setCustomStatus(e.target.value)}
+              maxLength={100}
+              placeholder="e.g. Lost in the archives of Alexandria..."
+              className="w-full bg-surface-container-lowest border border-outline-variant/30 text-on-surface placeholder:text-outline/50 px-3.5 py-2.5 rounded-lg text-sm focus:outline-none focus:border-primary shadow-inner"
+            />
+          </div>
+
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="font-label-sm text-[11px] uppercase tracking-wider text-on-surface-variant">
@@ -119,7 +206,7 @@ function EditProfileModal({ user, onClose, onUpdate }) {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               maxLength={500}
-              rows={4}
+              rows={3}
               placeholder="Share your literary passions, favourite genres, or reading goals..."
               className="w-full bg-surface-container-lowest border border-outline-variant/30 text-on-surface placeholder:text-outline/50 p-3.5 rounded-lg text-sm focus:outline-none focus:border-primary shadow-inner resize-none"
             />
@@ -168,6 +255,7 @@ function formatMemberDate(dateStr) {
 export default function Profile() {
   const navigate = useNavigate();
   const { username: routeUsername } = useParams();
+  const { refreshProfile } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
@@ -393,6 +481,7 @@ export default function Profile() {
   };
 
   const currentUser = profileData?.user;
+  const availMeta = AVAILABILITY_CONFIG[currentUser?.availability || 'Online'] || AVAILABILITY_CONFIG.Online;
   const stats = profileData?.stats || {
     totalBooks: 0,
     completedBooks: 0,
@@ -499,9 +588,9 @@ export default function Profile() {
                     {/* Online Beacon */}
                     <span
                       className="absolute bottom-1 right-2 w-5 h-5 rounded-full bg-surface-container-lowest flex items-center justify-center shadow-md"
-                      title="Online"
+                      title={`Availability: ${availMeta.label}`}
                     >
-                      <span className="w-3.5 h-3.5 rounded-full bg-primary animate-pulse" />
+                      <span className={`w-3.5 h-3.5 rounded-full ${availMeta.dot} ${currentUser?.availability === 'Online' ? 'animate-pulse' : ''}`} />
                     </span>
                     <span
                       className="material-symbols-outlined absolute -top-1 -right-1 text-primary text-[20px] bg-surface-container-low p-1 rounded-full shadow-sm"
@@ -517,9 +606,21 @@ export default function Profile() {
                       <h1 className="font-headline-lg font-garamond text-2xl sm:text-3xl text-on-surface tracking-tight font-semibold">
                         {currentUser?.username || 'Reader'}
                       </h1>
-                      <span className="px-2.5 py-0.5 rounded bg-surface-container-high text-primary font-label-sm text-[11px] uppercase tracking-wider shadow-sm font-semibold">
-                        Reader • Book Club Member
+                      {/* Availability pill */}
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high font-label-sm text-[11px] font-semibold ${availMeta.text} border border-outline-variant/20 shadow-xs`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${availMeta.dot}`} />
+                        <span>{availMeta.label}</span>
                       </span>
+                      {/* Mood pill */}
+                      <span className="px-2.5 py-0.5 rounded-full bg-surface-container-high text-primary font-label-sm text-[11px] font-semibold border border-primary/20 shadow-xs">
+                        {currentUser?.mood || '📖 Reading'}
+                      </span>
+                      {/* Custom status message if present */}
+                      {currentUser?.customStatus && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-surface-container text-on-surface-variant font-body-sm text-[11px] italic border border-outline-variant/20">
+                          "{currentUser.customStatus}"
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-on-surface-variant text-xs">
@@ -1672,6 +1773,7 @@ export default function Profile() {
                 ...updatedUser,
               },
             }));
+            if (refreshProfile) refreshProfile();
           }}
         />
       )}

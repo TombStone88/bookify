@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +20,29 @@ function Spinner({ size = 18 }) {
   );
 }
 
+function GoogleIcon({ className = "w-4 h-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+      />
+    </svg>
+  );
+}
+
 export default function Auth() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -28,8 +51,19 @@ export default function Auth() {
   const isRegisterMode = searchParams.get('mode') === 'register';
   const [isLogin, setIsLogin] = useState(!isRegisterMode);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [gisLoaded, setGisLoaded] = useState(false);
   const [showPass, setShowPass] = useState(false);
   const [magicLinkMsg, setMagicLinkMsg] = useState(false);
+
+  const googleBtnContainerRef = useRef(null);
+  const googleClientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+  const isGoogleConfigured = Boolean(
+    googleClientId &&
+      googleClientId.trim() !== '' &&
+      !googleClientId.includes('placeholder') &&
+      googleClientId !== 'bookify-google-client-id.apps.googleusercontent.com'
+  );
 
   // Form State
   const initialEmail = searchParams.get('email') || '';
@@ -40,7 +74,6 @@ export default function Auth() {
   });
 
   // Registration Extra State
-  const [selectedRole, setSelectedRole] = useState('host');
   const [agreedToCharter, setAgreedToCharter] = useState(true);
 
   // Sync state if query param changes externally
@@ -123,11 +156,144 @@ export default function Auth() {
     }
   };
 
+  // ── GOOGLE IDENTITY SERVICES INTEGRATION ────────────────────
+  const handleGoogleCredentialResponse = useCallback(
+    async (response) => {
+      const idToken = response?.credential;
+      if (!idToken) {
+        toast.error('Google did not return a valid credential. Please try again.');
+        return;
+      }
+
+      setGoogleLoading(true);
+      try {
+        const res = await api.post('/api/auth/google', { idToken });
+        login(res.data.token);
+
+        if (res.data.linked) {
+          toast.success('Your existing Bookify account was linked with Google! 📚');
+        } else if (res.data.isNewUser) {
+          toast.success('Welcome to Bookify! Account created with Google. 📖');
+        } else {
+          toast.success('Welcome back to your reading circle! 👋');
+        }
+
+        navigate(redirectTarget, { replace: true });
+      } catch (err) {
+        const msg =
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          'Google authentication failed. Please try again.';
+        toast.error(msg);
+      } finally {
+        setGoogleLoading(false);
+      }
+    },
+    [login, navigate, redirectTarget]
+  );
+
+  // Monitor GIS script readiness
+  useEffect(() => {
+    if (window.google?.accounts?.id) {
+      setGisLoaded(true);
+      return;
+    }
+    const interval = setInterval(() => {
+      if (window.google?.accounts?.id) {
+        setGisLoaded(true);
+        clearInterval(interval);
+      }
+    }, 250);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Initialize GIS if configured and script is ready
+  useEffect(() => {
+    if (gisLoaded && isGoogleConfigured && window.google?.accounts?.id) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: googleClientId,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        if (googleBtnContainerRef.current) {
+          googleBtnContainerRef.current.innerHTML = '';
+          window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
+            type: 'standard',
+            theme: 'filled_black',
+            size: 'large',
+            text: isLogin ? 'signin_with' : 'signup_with',
+            shape: 'rectangular',
+            logo_alignment: 'left',
+            width: googleBtnContainerRef.current.offsetWidth || 340,
+          });
+        }
+      } catch (e) {
+        console.warn('[Google Auth] GIS initialization note:', e);
+      }
+    }
+  }, [gisLoaded, isGoogleConfigured, googleClientId, isLogin, handleGoogleCredentialResponse]);
+
   const handleSocialSignIn = () => {
-    toast(
-      'Google single sign-on is scheduled for next dispatch. Please use email credentials.',
-      { icon: '🏛️' }
-    );
+    if (googleLoading || loading) return;
+
+    if (!isGoogleConfigured) {
+      toast(
+        () => (
+          <div className="flex flex-col gap-1 text-xs text-left">
+            <span className="font-semibold text-amber-300">Google OAuth Setup Required</span>
+            <span className="text-on-surface-variant">
+              Please set a valid <code className="bg-surface-container px-1 py-0.5 rounded text-amber-200">REACT_APP_GOOGLE_CLIENT_ID</code> in <code className="bg-surface-container px-1 py-0.5 rounded text-amber-200">client/.env</code>.
+            </span>
+          </div>
+        ),
+        { icon: '⚙️', duration: 6000 }
+      );
+      console.warn(
+        '[Bookify Google Auth] Missing or placeholder REACT_APP_GOOGLE_CLIENT_ID in client/.env.\n' +
+        'To enable Google Sign-In:\n' +
+        '1. Go to Google Cloud Console (https://console.cloud.google.com) > APIs & Services > Credentials.\n' +
+        '2. Create an OAuth 2.0 Web Client ID with Authorized JavaScript Origin: http://localhost:3000\n' +
+        '3. Add REACT_APP_GOOGLE_CLIENT_ID in client/.env and GOOGLE_CLIENT_ID in server/.env.'
+      );
+      return;
+    }
+
+    if (!window.google?.accounts?.id) {
+      toast.error('Google Sign-In is initializing. Please check your network and try again.');
+      return;
+    }
+
+    try {
+      setGoogleLoading(true);
+
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: handleGoogleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+
+      window.google.accounts.id.prompt((notification) => {
+        setGoogleLoading(false);
+        if (notification.isNotDisplayed()) {
+          const reason = notification.getNotDisplayedReason();
+          console.warn('[Google Auth] Prompt not displayed:', reason);
+          toast.error(
+            `Google prompt not displayed (${reason || 'browser suppressed'}). Ensure popups/third-party cookies are enabled or sign into Google.`,
+            { duration: 5000 }
+          );
+        } else if (notification.isSkippedMoment()) {
+          console.warn('[Google Auth] Prompt skipped:', notification.getSkippedReason());
+        }
+      });
+    } catch (e) {
+      setGoogleLoading(false);
+      console.error('Error invoking Google sign-in:', e);
+      toast.error('Could not open Google authentication. Please try again.');
+    }
   };
 
   const handleMagicLink = () => {
@@ -291,20 +457,48 @@ export default function Auth() {
               </p>
             </div>
 
-            {/* Social Authentication */}
-            <button
-              onClick={handleSocialSignIn}
-              type="button"
-              className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-lg text-xs shadow-sm border border-outline-variant/20 transition-all duration-200 group cursor-pointer"
-            >
-              <svg
-                className="w-4 h-4 fill-current text-primary group-hover:scale-105 transition-transform"
-                viewBox="0 0 24 24"
+            {/* Social Authentication: Continue with Google */}
+            <div className="w-full flex flex-col items-center mb-1">
+              {/* Clearly Visible, Responsive "Continue with Google" Button */}
+              <button
+                id="google-signin-btn"
+                onClick={handleSocialSignIn}
+                disabled={googleLoading || loading}
+                type="button"
+                className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-lg text-xs sm:text-sm font-medium shadow-sm border border-outline-variant/30 hover:border-primary/40 active:scale-[0.99] transition-all duration-200 group cursor-pointer disabled:opacity-50"
               >
-                <path d="M12.24 10.285V13.4h6.887C18.2 16.035 15.65 18 12.24 18c-3.315 0-6-2.685-6-6s2.685-6 6-6c1.47 0 2.81.53 3.86 1.405l2.45-2.45C17.07 3.555 14.8 2.7 12.24 2.7 7.14 2.7 3 6.84 3 11.94s4.14 9.24 9.24 9.24c5.33 0 8.86-3.75 8.86-9.02 0-.6-.065-1.18-.185-1.875H12.24z" />
-              </svg>
-              <span>{isLogin ? 'Sign in with Google' : 'Sign up with Google'}</span>
-            </button>
+                {googleLoading ? (
+                  <Spinner size={16} />
+                ) : (
+                  <GoogleIcon className="w-4 h-4 shrink-0 transition-transform group-hover:scale-105" />
+                )}
+                <span>
+                  {googleLoading
+                    ? 'Connecting to Google...'
+                    : isLogin
+                    ? 'Continue with Google'
+                    : 'Sign up with Google'}
+                </span>
+              </button>
+
+              {/* Informational Configuration Note when OAuth Client ID is missing */}
+              {!isGoogleConfigured && (
+                <div className="w-full mt-2 p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px] flex items-start gap-2 leading-snug">
+                  <span className="material-symbols-outlined text-[15px] shrink-0 text-amber-400 mt-0.5">
+                    info
+                  </span>
+                  <div className="flex-1">
+                    <span className="font-semibold text-amber-200">OAuth Setup Required: </span>
+                    <span>
+                      Set <code className="bg-surface-container-lowest px-1 py-0.5 rounded text-amber-200 font-mono">REACT_APP_GOOGLE_CLIENT_ID</code> in <code className="bg-surface-container-lowest px-1 py-0.5 rounded text-amber-200 font-mono">client/.env</code> to authenticate with Google.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Hidden container where official GIS can be rendered if available */}
+              <div ref={googleBtnContainerRef} className="hidden" aria-hidden="true" />
+            </div>
 
             {/* Editorial Divider */}
             <div className="relative my-3 flex items-center justify-center">
@@ -451,41 +645,6 @@ export default function Auth() {
                 )}
               </div>
 
-              {/* Role Selection (Register Mode Only - Compact Segmented Pill) */}
-              {!isLogin && (
-                <div className="flex flex-col gap-1 pt-1">
-                  <label className="font-label-sm text-[11px] uppercase tracking-wider text-on-surface-variant">
-                    Primary Role
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedRole('host')}
-                      className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border text-xs font-label-lg transition-all ${
-                        selectedRole === 'host'
-                          ? 'bg-surface-container-high border-primary text-primary font-semibold'
-                          : 'bg-surface-container-lowest border-outline-variant/30 text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-sm">hotel_class</span>
-                      <span>Club Host</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedRole('reader')}
-                      className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg border text-xs font-label-lg transition-all ${
-                        selectedRole === 'reader'
-                          ? 'bg-surface-container-high border-primary text-secondary font-semibold'
-                          : 'bg-surface-container-lowest border-outline-variant/30 text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-sm">local_library</span>
-                      <span>Avid Reader</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* Checkboxes */}
               {isLogin ? (
                 <div className="flex items-center justify-between pt-0.5">
@@ -519,7 +678,7 @@ export default function Auth() {
               {/* Submit CTA Button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || googleLoading}
                 className="w-full mt-1 py-2.5 px-4 rounded-lg bg-primary hover:bg-secondary text-on-primary font-label-lg text-sm flex items-center justify-center gap-2 shadow-lg hover:shadow-primary/20 transition-all duration-200 font-semibold group cursor-pointer disabled:opacity-60"
               >
                 {loading ? (

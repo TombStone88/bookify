@@ -8,8 +8,17 @@ import Footer from '../components/Footer';
 import BookCover from '../components/BookCover';
 
 // ── CREATE CLUB MODAL ──────────────────────────────────────
+const CLUB_CATEGORIES = [
+  { id: 'classics', label: 'Classics & Philosophy' },
+  { id: 'speculative', label: 'Speculative & Sci-Fi' },
+  { id: 'gothic', label: 'Historical & Gothic' },
+  { id: 'literary', label: 'Literary Fiction' },
+  { id: 'poetry', label: 'Poetry & Essays' },
+  { id: 'general', label: 'General Reading Circle' },
+];
+
 function CreateClubModal({ onClose, onSuccess }) {
-  const [form, setForm] = useState({ name: '', description: '' });
+  const [form, setForm] = useState({ name: '', description: '', category: 'general' });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -22,6 +31,7 @@ function CreateClubModal({ onClose, onSuccess }) {
       await api.post('/api/clubs/create', {
         name: form.name.trim(),
         description: form.description.trim(),
+        category: form.category,
       });
       toast.success(`Club "${form.name}" created successfully! 🏛`);
       onSuccess();
@@ -81,6 +91,23 @@ function CreateClubModal({ onClose, onSuccess }) {
 
           <div>
             <label className="block font-label-sm text-[11px] uppercase tracking-wider text-on-surface-variant mb-1.5">
+              Literary Category
+            </label>
+            <select
+              value={form.category}
+              onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+              className="w-full bg-surface-container-lowest border border-outline-variant/30 text-on-surface font-body-sm text-sm px-3.5 py-2.5 rounded-lg shadow-inner focus:outline-none focus:border-primary transition-all cursor-pointer"
+            >
+              {CLUB_CATEGORIES.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-label-sm text-[11px] uppercase tracking-wider text-on-surface-variant mb-1.5">
               Club Description (Optional)
             </label>
             <textarea
@@ -128,7 +155,7 @@ function CreateClubModal({ onClose, onSuccess }) {
 }
 
 // ── DISCOVER CLUBS SLIDING DRAWER ──────────────────────────
-function DiscoverClubsDrawer({ isOpen, onClose, onJoinedSuccess, myClubs }) {
+function DiscoverClubsDrawer({ isOpen, onClose, onJoinedSuccess, myClubs, onCreateNew }) {
   const navigate = useNavigate();
   const [inviteCode, setInviteCode] = useState('');
   const [joiningCode, setJoiningCode] = useState(false);
@@ -136,6 +163,28 @@ function DiscoverClubsDrawer({ isOpen, onClose, onJoinedSuccess, myClubs }) {
   const [selectedGenre, setSelectedGenre] = useState('all');
   const [expandedClubId, setExpandedClubId] = useState(null);
   const [joiningClubId, setJoiningClubId] = useState(null);
+  const [directoryClubs, setDirectoryClubs] = useState([]);
+  const [loadingDirectory, setLoadingDirectory] = useState(false);
+
+  // Fetch all clubs for directory discovery
+  const fetchDirectory = useCallback(async () => {
+    setLoadingDirectory(true);
+    try {
+      const res = await api.get('/api/clubs/directory');
+      setDirectoryClubs(res.data || []);
+    } catch {
+      // Fallback gracefully to myClubs if directory endpoint fails
+      setDirectoryClubs(myClubs || []);
+    } finally {
+      setLoadingDirectory(false);
+    }
+  }, [myClubs]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchDirectory();
+    }
+  }, [isOpen, fetchDirectory]);
 
   // Close on Escape key press
   useEffect(() => {
@@ -170,6 +219,7 @@ function DiscoverClubsDrawer({ isOpen, onClose, onJoinedSuccess, myClubs }) {
       const res = await api.post(`/api/clubs/join/${cleanCode}`);
       toast.success(res.data?.message || 'Joined reading circle! 🏛');
       setInviteCode('');
+      await fetchDirectory();
       onJoinedSuccess();
     } catch (err) {
       toast.error(err.response?.data?.message || err.response?.data?.error || 'Invalid or expired invite code');
@@ -187,6 +237,7 @@ function DiscoverClubsDrawer({ isOpen, onClose, onJoinedSuccess, myClubs }) {
     try {
       const res = await api.post(`/api/clubs/join/${club.inviteCode}`);
       toast.success(res.data?.message || `Joined "${club.name}"! 🏛`);
+      await fetchDirectory();
       onJoinedSuccess();
     } catch (err) {
       toast.error(err.response?.data?.message || err.response?.data?.error || 'Failed to join circle');
@@ -207,8 +258,43 @@ function DiscoverClubsDrawer({ isOpen, onClose, onJoinedSuccess, myClubs }) {
 
   // Map of joined club IDs for quick lookup
   const joinedClubIds = useMemo(() => {
-    return new Set((myClubs || []).map((c) => c._id));
-  }, [myClubs]);
+    const joined = new Set((myClubs || []).map((c) => c._id));
+    directoryClubs.forEach((c) => {
+      if (c.isJoined) joined.add(c._id);
+    });
+    return joined;
+  }, [myClubs, directoryClubs]);
+
+  // Combined category and search filtering
+  const filteredClubs = useMemo(() => {
+    const sourceClubs = directoryClubs.length > 0 ? directoryClubs : (myClubs || []);
+    return sourceClubs.filter((c) => {
+      // 1. Category Filter:
+      // "All Circles" shows all clubs.
+      // Individual categories match actual stored category value.
+      if (selectedGenre !== 'all') {
+        const clubCat = (c.category || 'general').toString().toLowerCase().trim();
+        if (clubCat !== selectedGenre.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 2. Search Filter:
+      // Filters simultaneously alongside category filter.
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const nameMatch = c.name?.toLowerCase().includes(q);
+        const descMatch = c.description?.toLowerCase().includes(q);
+        const catMatch = c.category?.toLowerCase().includes(q);
+        const curatorMatch = c.curatorName?.toLowerCase().includes(q);
+        if (!nameMatch && !descMatch && !catMatch && !curatorMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [directoryClubs, myClubs, selectedGenre, searchQuery]);
 
   if (!isOpen) return null;
 
@@ -273,7 +359,7 @@ function DiscoverClubsDrawer({ isOpen, onClose, onJoinedSuccess, myClubs }) {
                     Have an Invitation Code?
                   </h3>
                   <p className="font-body-sm text-xs text-on-surface-variant mt-0.5 leading-relaxed">
-                    Paste the 6-character code shared by a circle curator to join an existing salon instantly.
+                    Paste the 6-character code shared by a club host to join an existing book club instantly.
                   </p>
                 </div>
 
@@ -362,129 +448,179 @@ function DiscoverClubsDrawer({ isOpen, onClose, onJoinedSuccess, myClubs }) {
               </div>
 
               {/* Known Circles List */}
-              {myClubs.length > 0 ? (
+              {loadingDirectory ? (
+                <div className="p-12 text-center flex flex-col items-center justify-center gap-3">
+                  <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="font-headline-sm font-garamond text-sm text-outline">
+                    Retrieving guild directory…
+                  </p>
+                </div>
+              ) : filteredClubs.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {myClubs
-                    .filter((c) => {
-                      if (!searchQuery) return true;
-                      const q = searchQuery.toLowerCase();
-                      return (
-                        c.name?.toLowerCase().includes(q) ||
-                        c.description?.toLowerCase().includes(q)
-                      );
-                    })
-                    .map((club) => {
-                      const isJoined = joinedClubIds.has(club._id);
-                      const isExpanded = expandedClubId === club._id;
-                      const isJoining = joiningClubId === club._id;
+                  {filteredClubs.map((club) => {
+                    const isJoined = joinedClubIds.has(club._id);
+                    const isExpanded = expandedClubId === club._id;
+                    const isJoining = joiningClubId === club._id;
 
-                      return (
-                        <article
-                          key={club._id}
-                          className="rounded-xl bg-surface-container border border-outline-variant/20 p-5 shadow-sm hover:border-primary/30 transition-all flex flex-col justify-between"
-                        >
-                          <div>
-                            {/* Card Header */}
-                            <div className="flex items-center justify-between gap-2 mb-3">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-lg bg-surface-container-high border border-primary/20 flex items-center justify-center text-primary font-garamond text-base font-bold">
-                                  {club.name ? club.name.charAt(0).toUpperCase() : '🏛'}
-                                </div>
-                                <div>
-                                  <h4 className="font-headline-sm font-garamond text-base text-on-surface font-semibold truncate">
-                                    {club.name}
-                                  </h4>
-                                  <p className="font-label-sm text-[10px] text-outline">
-                                    {club.curatorName ? `Hosted by ${club.curatorName}` : 'Book Club'}
-                                  </p>
-                                </div>
+                    return (
+                      <article
+                        key={club._id}
+                        className="rounded-xl bg-surface-container border border-outline-variant/20 p-5 shadow-sm hover:border-primary/30 transition-all flex flex-col justify-between"
+                      >
+                        <div>
+                          {/* Card Header */}
+                          <div className="flex items-center justify-between gap-2 mb-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-lg bg-surface-container-high border border-primary/20 flex items-center justify-center text-primary font-garamond text-base font-bold">
+                                {club.name ? club.name.charAt(0).toUpperCase() : '🏛'}
                               </div>
+                              <div>
+                                <h4 className="font-headline-sm font-garamond text-base text-on-surface font-semibold truncate">
+                                  {club.name}
+                                </h4>
+                                <p className="font-label-sm text-[10px] text-outline">
+                                  {club.curatorName ? `Hosted by ${club.curatorName}` : 'Book Club'}
+                                </p>
+                              </div>
+                            </div>
 
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <span className="px-2 py-0.5 rounded bg-surface-container-high text-primary font-label-sm text-[10px] uppercase tracking-wider font-semibold">
+                                {club.category || 'general'}
+                              </span>
                               <span className="px-2 py-0.5 rounded bg-surface-container-high text-primary font-label-sm text-[10px] flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[13px]">group</span>
                                 <span>{club.memberCount || club.members?.length || 1}</span>
                               </span>
                             </div>
-
-                            {/* Description */}
-                            <p className="font-body-sm text-xs text-on-surface-variant line-clamp-2 leading-relaxed mb-3">
-                              {club.description || 'A dedicated circle for quiet reading, chapter notes, and shared literary insights.'}
-                            </p>
-
-                            {/* Expandable Details Panel */}
-                            {isExpanded && (
-                              <div className="p-3 rounded-lg bg-surface-container-lowest border border-outline-variant/20 mb-3 text-xs space-y-2 animate-fadeIn">
-                                <div>
-                                  <span className="font-label-sm text-[10px] text-primary uppercase tracking-wider block mb-0.5">
-                                    Club Details
-                                  </span>
-                                  <p className="text-on-surface-variant text-[11px] leading-relaxed">
-                                    {club.description || 'No extended description recorded for this club.'}
-                                  </p>
-                                </div>
-
-                                <div className="pt-2 border-t border-outline-variant/15 flex items-center justify-between text-[11px]">
-                                  <span className="text-outline">Invite Code:</span>
-                                  <span className="font-mono text-primary font-semibold tracking-wider">
-                                    {club.inviteCode || 'N/A'}
-                                  </span>
-                                </div>
-
-                                {club.currentBook && (
-                                  <div className="pt-2 border-t border-outline-variant/15 flex items-center justify-between text-[11px]">
-                                    <span className="text-outline">Current Book:</span>
-                                    <span className="text-on-surface truncate font-medium">
-                                      {club.currentBook.title}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
                           </div>
 
-                          {/* Card Footer Actions */}
-                          <div className="pt-3 border-t border-outline-variant/15 flex items-center justify-between gap-2 mt-2">
-                            <button
-                              onClick={() => setExpandedClubId(isExpanded ? null : club._id)}
-                              className="text-xs text-outline hover:text-primary transition-colors flex items-center gap-1 font-label-sm cursor-pointer"
-                            >
-                              <span>{isExpanded ? 'Hide Details' : 'View Details'}</span>
-                              <span className="material-symbols-outlined text-sm">
-                                {isExpanded ? 'expand_less' : 'expand_more'}
-                              </span>
-                            </button>
+                          {/* Description */}
+                          <p className="font-body-sm text-xs text-on-surface-variant line-clamp-2 leading-relaxed mb-3">
+                            {club.description || 'A dedicated circle for quiet reading, chapter notes, and shared literary insights.'}
+                          </p>
 
-                            <div className="flex items-center gap-2">
-                              {isJoined ? (
-                                <button
-                                  onClick={() => {
-                                    onClose();
-                                    navigate(`/club/${club._id}`);
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright text-primary font-label-sm text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
-                                >
-                                  <span>Enter Room</span>
-                                  <span className="material-symbols-outlined text-xs">
-                                    arrow_forward
+                          {/* Expandable Details Panel */}
+                          {isExpanded && (
+                            <div className="p-3 rounded-lg bg-surface-container-lowest border border-outline-variant/20 mb-3 text-xs space-y-2 animate-fadeIn">
+                              <div>
+                                <span className="font-label-sm text-[10px] text-primary uppercase tracking-wider block mb-0.5">
+                                  Club Details
+                                </span>
+                                <p className="text-on-surface-variant text-[11px] leading-relaxed">
+                                  {club.description || 'No extended description recorded for this club.'}
+                                </p>
+                              </div>
+
+                              <div className="pt-2 border-t border-outline-variant/15 flex items-center justify-between text-[11px]">
+                                <span className="text-outline">Category:</span>
+                                <span className="font-mono text-primary font-semibold capitalize">
+                                  {club.category || 'general'}
+                                </span>
+                              </div>
+
+                              <div className="pt-2 border-t border-outline-variant/15 flex items-center justify-between text-[11px]">
+                                <span className="text-outline">Invite Code:</span>
+                                <span className="font-mono text-primary font-semibold tracking-wider">
+                                  {club.inviteCode || 'N/A'}
+                                </span>
+                              </div>
+
+                              {club.currentBook && (
+                                <div className="pt-2 border-t border-outline-variant/15 flex items-center justify-between text-[11px]">
+                                  <span className="text-outline">Current Book:</span>
+                                  <span className="text-on-surface truncate font-medium">
+                                    {club.currentBook.title}
                                   </span>
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleJoinClub(club)}
-                                  disabled={isJoining}
-                                  className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-secondary text-on-primary font-label-sm text-xs font-semibold shadow-sm transition-all flex items-center gap-1 disabled:opacity-50 cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-xs">
-                                    {isJoining ? 'hourglass_empty' : 'group_add'}
-                                  </span>
-                                  <span>{isJoining ? 'Joining...' : 'Join Club'}</span>
-                                </button>
+                                </div>
                               )}
                             </div>
+                          )}
+                        </div>
+
+                        {/* Card Footer Actions */}
+                        <div className="pt-3 border-t border-outline-variant/15 flex items-center justify-between gap-2 mt-2">
+                          <button
+                            onClick={() => setExpandedClubId(isExpanded ? null : club._id)}
+                            className="text-xs text-outline hover:text-primary transition-colors flex items-center gap-1 font-label-sm cursor-pointer"
+                          >
+                            <span>{isExpanded ? 'Hide Details' : 'View Details'}</span>
+                            <span className="material-symbols-outlined text-sm">
+                              {isExpanded ? 'expand_less' : 'expand_more'}
+                            </span>
+                          </button>
+
+                          <div className="flex items-center gap-2">
+                            {isJoined ? (
+                              <button
+                                onClick={() => {
+                                  onClose();
+                                  navigate(`/club/${club._id}`);
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-bright text-primary font-label-sm text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                              >
+                                <span>Enter Room</span>
+                                <span className="material-symbols-outlined text-xs">
+                                  arrow_forward
+                                </span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleJoinClub(club)}
+                                disabled={isJoining}
+                                className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-secondary text-on-primary font-label-sm text-xs font-semibold shadow-sm transition-all flex items-center gap-1 disabled:opacity-50 cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-xs">
+                                  {isJoining ? 'hourglass_empty' : 'group_add'}
+                                </span>
+                                <span>{isJoining ? 'Joining...' : 'Join Club'}</span>
+                              </button>
+                            )}
                           </div>
-                        </article>
-                      );
-                    })}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : selectedGenre !== 'all' ? (
+                <div className="p-10 rounded-xl bg-surface-container text-center border border-outline-variant/15 flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-surface-container-high border border-primary/20 flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined text-2xl">auto_stories</span>
+                  </div>
+                  <div className="space-y-1 max-w-md">
+                    <h4 className="font-headline-sm font-garamond text-lg text-on-surface font-semibold">
+                      No circles found in this category yet. Be the first to create one!
+                    </h4>
+                    <p className="font-body-sm text-xs text-outline leading-relaxed">
+                      Inaugurate a reading circle under this theme for collaborative chapter discussions.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      onClose();
+                      if (onCreateNew) onCreateNew();
+                    }}
+                    className="mt-2 px-4 py-2 rounded-lg bg-primary hover:bg-secondary text-on-primary font-label-sm text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">add_circle</span>
+                    <span>Create Circle</span>
+                  </button>
+                </div>
+              ) : searchQuery.trim() ? (
+                <div className="p-10 rounded-xl bg-surface-container text-center border border-outline-variant/15 flex flex-col items-center gap-2">
+                  <span className="material-symbols-outlined text-outline text-3xl">search_off</span>
+                  <h4 className="font-headline-sm font-garamond text-base text-on-surface font-semibold">
+                    No circles found matching "{searchQuery}"
+                  </h4>
+                  <p className="font-body-sm text-xs text-outline">
+                    Try searching with a different title or keyword, or reset your search query.
+                  </p>
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="mt-2 px-3 py-1.5 rounded-lg bg-surface-container-high text-primary hover:text-secondary font-label-sm text-xs transition-colors cursor-pointer"
+                  >
+                    Clear Search
+                  </button>
                 </div>
               ) : (
                 <div className="p-8 rounded-xl bg-surface-container text-center border border-outline-variant/15">
@@ -883,17 +1019,22 @@ export default function Clubs() {
                           <span>{currentBook ? 'Active Book' : 'Reading Open'}</span>
                         </div>
 
-                        {isHost ? (
-                          <span className="font-label-sm text-[11px] text-primary flex items-center gap-1 font-semibold">
-                            <span className="material-symbols-outlined text-[14px]">shield_person</span>
-                            <span>Host: You</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded bg-surface-container-high text-primary font-label-sm text-[10px] uppercase tracking-wider font-semibold">
+                            {club.category || 'general'}
                           </span>
-                        ) : (
-                          <span className="font-label-sm text-[11px] text-outline flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">group</span>
-                            <span>{club.memberCount} Members</span>
-                          </span>
-                        )}
+                          {isHost ? (
+                            <span className="font-label-sm text-[11px] text-primary flex items-center gap-1 font-semibold">
+                              <span className="material-symbols-outlined text-[14px]">shield_person</span>
+                              <span>Host: You</span>
+                            </span>
+                          ) : (
+                            <span className="font-label-sm text-[11px] text-outline flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px]">group</span>
+                              <span>{club.memberCount} Members</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
 
                       {/* Club Title & Lore */}
@@ -1056,6 +1197,7 @@ export default function Clubs() {
           fetchClubs();
         }}
         myClubs={clubs}
+        onCreateNew={() => setShowCreateModal(true)}
       />
 
       {/* ── GLOBAL FOOTER ─────────────────────────────────────── */}

@@ -12,11 +12,27 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
     trim: true,
+    lowercase: true,
   },
 
   password: {
     type: String,
-    required: true,
+    required: function () {
+      return !this.googleId;
+    },
+  },
+
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
+  },
+
+  authProvider: {
+    type: String,
+    enum: ["local", "google"],
+    default: "local",
   },
 
   profileImage: {
@@ -29,6 +45,25 @@ const userSchema = new mongoose.Schema({
     default: "",
     trim: true,
     maxlength: 500,
+  },
+
+  mood: {
+    type: String,
+    default: "📖 Reading",
+    trim: true,
+  },
+
+  customStatus: {
+    type: String,
+    default: "",
+    trim: true,
+    maxlength: 100,
+  },
+
+  availability: {
+    type: String,
+    enum: ["Online", "Away", "Do Not Disturb", "Offline"],
+    default: "Online",
   },
 
   favoriteGenres: {

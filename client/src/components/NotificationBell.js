@@ -265,7 +265,7 @@ export default function NotificationBell() {
                 <span className="material-symbols-outlined text-2xl animate-spin text-primary mb-2">
                   progress_activity
                 </span>
-                <p className="text-xs font-body-sm">Gathering salon dispatches…</p>
+                <p className="text-xs font-body-sm">Loading notifications…</p>
               </div>
             ) : error ? (
               <div className="p-6 text-center">

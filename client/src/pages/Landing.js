@@ -24,7 +24,7 @@ export default function Landing() {
     }
   };
 
-  const handleExploreSalons = () => {
+  const handleExploreClubs = () => {
     if (token) {
       navigate('/clubs');
     } else {
@@ -140,7 +140,7 @@ export default function Landing() {
               {/* Dual CTAs */}
               <div className="flex flex-wrap items-center justify-center gap-space-md mb-space-lg">
                 <button
-                  onClick={handleExploreSalons}
+                  onClick={handleExploreClubs}
                   className="inline-flex items-center gap-space-xs px-space-lg py-space-sm rounded-lg bg-primary text-on-primary font-label-lg text-label-lg transition-all duration-300 shadow-[0_0_24px_rgba(212,163,115,0.28)] hover:shadow-[0_0_32px_rgba(212,163,115,0.45)] hover:bg-secondary cursor-pointer"
                 >
                   <span>Explore Book Clubs</span>
@@ -272,7 +272,7 @@ export default function Landing() {
             </div>
           </section>
 
-          {/* ── SECTION 3: CLASSICAL SALON REFLECTIONS ─────────── */}
+          {/* ── SECTION 3: CLASSICAL LITERARY REFLECTIONS ─────────── */}
           {/* Authentic literary reflections (No fictional users, fake star ratings, or fabricated reviews) */}
           <section
             id="classical-reflections"

@@ -844,7 +844,7 @@ export default function Dashboard() {
                       No Reading Circles Joined Yet
                     </h4>
                     <p className="font-body-sm text-on-surface-variant text-xs mt-1 mb-3">
-                      Join an active circle or create your own salon with chapter milestones.
+                      Join an active club or create your own book club with chapter milestones.
                     </p>
                     <button
                       onClick={() => navigate('/clubs')}
